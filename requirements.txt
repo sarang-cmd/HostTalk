@@ -1,10 +1,9 @@
 Flask
 Flask-SocketIO
+gevent
 pystray
 Pillow
-eventlet
-Flask
-Flask-SocketIO
-eventlet
-pystray
-Pillow
+bcrypt
+dotenv
+requests
+beautifulsoup4

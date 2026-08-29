@@ -6,6 +6,8 @@
   <meta name="theme-color" content="#07a0ff">
   <link rel="manifest" href="{{url_for('static',filename='manifest.json')}}">
   <script src="{{url_for('static',filename='socket.io.min.js')}}"></script>
+  <script src="{{url_for('static',filename='lib/compressor.min.js')}}"></script>
+  <script src="{{url_for('static',filename='lib/fflate.min.js')}}"></script>
   <link rel="stylesheet" href="{{url_for('static',filename='main.css')}}">
   <link rel="stylesheet" href="{{url_for('static',filename='responsive.css')}}">
   <link rel="icon" href="{{url_for('static',filename='favicon.ico')}}">
@@ -18,12 +20,29 @@
 </head>
 <body>
 <header>
+  <h2 id="chat-header">Group Chat</h2>
+  <button id="back-to-group" onclick="closeDM()" style="display: none; background: none; border: none; color: inherit; font-size: 14px; cursor: pointer;">← Back</button>
+  <span id="dm-indicator" style="display: none; font-size: 12px; opacity: 0.7; margin-left: 8px;"></span>
   <button action="showset" def="button" type="button">⋮</button>
 </header>
   <div id="chat"></div>
+  <div id="user-list" style="display: none; position: fixed; right: 0; top: 60px; bottom: 60px; width: 200px; background: var(--bg-card); border-left: 1px solid var(--border); overflow-y: auto; z-index: 100;">
+    <h3 style="padding: 12px; margin: 0; border-bottom: 1px solid var(--border);">Online Users</h3>
+    <div id="user-list-items"></div>
+  </div>
+  <button id="toggle-users" onclick="toggleUserList()" style="position: fixed; right: 10px; bottom: 70px; z-index: 99; background: var(--bg-card); border: 1px solid var(--border); border-radius: 50%; width: 44px; height: 44px; cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,0.15);">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin: auto; display: block;">
+      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+      <circle cx="9" cy="7" r="4"/>
+      <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+      <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+    </svg>
+  </button>
   <div tromoSM="fixed-b-row">
   <div oc="p">
   <input dih="yo" autocomplete="off" >
+  <input type="file" id="file-upload" style="display: none;" accept="image/*,.pdf,.txt,.doc,.docx,.zip,.rar" />
+  <button onclick="document.getElementById('file-upload').click()" type="button" style="background: none; border: none; padding: 8px; cursor: pointer;" title="Attach file"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05a9 9 0 0 1-12.92 0"/><path d="M15.35 15.35a4.5 4.5 0 0 1-6.36 0"/><path d="M12 2v20"/><path d="M8 16l4 4 4-4"/></svg></button>
   <button onclick="sendingmyahh()" main="button" type="button"><svg viewBox="0 0 41 48" direction='ltr' xmlns='http://www.w3.org/2000/svg' version='1.1'>
 <g fill-rule='nonzero' transform='scale(1,-1) translate(0,-48.103515625)'>
 <path  d='M 20.947265625,4.275390625     C 21.248046875,4.275390625 21.462890625,4.51171875 21.462890625,4.76953125     L 21.462890625,37.705078125     L 21.3984375,42.259765625     L 25.8671875,37.748046875     L 35.556640625,28.05859375     C 35.62109375,27.994140625 35.771484375,27.9296875 35.943359375,27.9296875     C 36.201171875,27.9296875 36.4375,28.14453125 36.4375,28.466796875     C 36.4375,28.6171875 36.39453125,28.724609375 36.287109375,28.83203125     L 21.3125,43.677734375     C 21.2265625,43.78515625 21.119140625,43.828125 20.947265625,43.828125     C 20.796875,43.828125 20.689453125,43.78515625 20.603515625,43.677734375     L 5.62890625,28.83203125     C 5.521484375,28.724609375 5.478515625,28.6171875 5.478515625,28.466796875     C 5.478515625,28.14453125 5.71484375,27.9296875 5.97265625,27.9296875     C 6.123046875,27.9296875 6.294921875,27.994140625 6.359375,28.05859375     L 16.048828125,37.748046875     L 20.517578125,42.259765625     L 20.453125,37.705078125     L 20.453125,4.76953125     C 20.453125,4.51171875 20.66796875,4.275390625 20.947265625,4.275390625     Z ' />
@@ -67,6 +86,43 @@
     <p>Placeholder</p>
     <option-wrp>
       <div oc="p"><input placeholder="Enter a placeholder" tromoSM="placein" type="text"></div>
+    </option-wrp>
+    <p>Your Color</p>
+    <option-wrp>
+      <div id="color-picker-grid" style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; max-width: 300px;"></div>
+      <div style="margin-top: 8px; display: flex; gap: 8px; align-items: center;">
+        <input type="color" id="custom-color" style="width: 40px; height: 40px; border: none; border-radius: 4px; cursor: pointer;">
+        <button onclick="setCustomColor()" style="padding: 8px 16px; background: var(--accent); color: white; border: none; border-radius: 4px; cursor: pointer;">Use Custom</button>
+      </div>
+    </option-wrp>
+    <p>Logs</p>
+    <option-wrp>
+      <button onclick="viewLogs()" style="padding: 10px 16px; background: var(--accent); color: white; border: none; border-radius: 4px; cursor: pointer; width: 100%;">View Server Logs</button>
+    </option-wrp>
+    <p>Stickers & GIFs</p>
+    <option-wrp>
+      <div style="display: flex; gap: 8px; margin-bottom: 8px;">
+        <input type="text" id="gif-search" placeholder="Search GIFs..." style="flex: 1; padding: 8px; border: 1px solid var(--border); border-radius: 4px; background: var(--bg-input); color: var(--text);">
+        <button onclick="searchGifs()" style="padding: 8px 16px; background: var(--accent); color: white; border: none; border-radius: 4px; cursor: pointer;">Search</button>
+      </div>
+      <div id="gif-results" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; max-height: 200px; overflow-y: auto;"></div>
+    </option-wrp>
+    <p>Profile</p>
+    <option-wrp>
+      <div style="display: flex; gap: 8px; margin-bottom: 8px;">
+        <input type="text" id="nickname-input" placeholder="New nickname..." style="flex: 1; padding: 8px; border: 1px solid var(--border); border-radius: 4px; background: var(--bg-input); color: var(--text);">
+        <button onclick="changeNickname()" style="padding: 8px 16px; background: var(--accent); color: white; border: none; border-radius: 4px; cursor: pointer;">Change</button>
+      </div>
+      <div id="nickname-cooldown" style="font-size: 0.8em; color: var(--text-muted); display: none;"></div>
+      <button onclick="viewNicknameHistory()" style="margin-top: 8px; padding: 8px 16px; background: var(--bg-card); color: var(--text); border: 1px solid var(--border); border-radius: 4px; cursor: pointer; width: 100%;">View Nickname History</button>
+    </option-wrp>
+    <p>LocalSend</p>
+    <option-wrp>
+      <div style="display: flex; gap: 8px; margin-bottom: 8px;">
+        <button onclick="scanLocalSend()" style="padding: 8px 16px; background: var(--accent); color: white; border: none; border-radius: 4px; cursor: pointer;">Scan for Devices</button>
+        <button onclick="sendViaLocalSend()" style="padding: 8px 16px; background: var(--bg-card); color: var(--text); border: 1px solid var(--border); border-radius: 4px; cursor: pointer;">Send File via LocalSend</button>
+      </div>
+      <div id="localsend-devices" style="max-height: 150px; overflow-y: auto;"></div>
     </option-wrp>
   </window-inside>
 </popup-window>
