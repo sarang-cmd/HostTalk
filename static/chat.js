@@ -24,16 +24,12 @@ window.addEventListener("DOMContentLoaded", function() {
     // Make usrahh globally accessible and updatable
     window.usrahh = usrahh;
     
-    // Check if server requires password
-    const savedPassword = localStorage.getItem('serverPassword');
-    if (savedPassword) {
-        sdihkid.emit('join', {name: window.usrahh, password: savedPassword});
-    } else {
-        sdihkid.emit('join', {name: window.usrahh});
-    }
-
     sdihkid.on('connect', function() {
-        if (!localStorage.getItem('serverPassword')) {
+        // Check if server requires password
+        const savedPassword = localStorage.getItem('serverPassword');
+        if (savedPassword) {
+            sdihkid.emit('join', {name: window.usrahh, password: savedPassword});
+        } else {
             sdihkid.emit('join', {name: window.usrahh});
         }
     });
