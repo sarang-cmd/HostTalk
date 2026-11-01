@@ -8,8 +8,9 @@ import sqlite3
 import threading
 import time
 import uuid
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any
 
 MAIN_ROOM = "main"
 MESSAGE_KINDS = {"text", "image", "file", "system", "gif"}
@@ -23,6 +24,7 @@ CREATE TABLE IF NOT EXISTS users (
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL COLLATE NOCASE UNIQUE,
     color TEXT NOT NULL DEFAULT '',
+    device_key TEXT NOT NULL DEFAULT '',
     avatar_seed TEXT NOT NULL DEFAULT '',
     created_at REAL NOT NULL,
     last_nick_at REAL NOT NULL DEFAULT 0
@@ -179,17 +181,37 @@ class Store:
             self.conn.execute("SELECT * FROM users WHERE name=? COLLATE NOCASE", (name,)).fetchone()
         )
 
-    def get_or_create_user(self, name: str, color: str = "") -> dict[str, Any]:
-        existing = self.get_user_by_name(name)
-        if existing:
-            return existing
+    def create_user(self, name: str, device_key: str = "", color: str = "") -> dict[str, Any]:
         user_id = new_id("u_")
         self.conn.execute(
-            "INSERT INTO users(id, name, color, avatar_seed, created_at) VALUES(?,?,?,?,?)",
-            (user_id, name, color, secrets.token_hex(4), now()),
+            "INSERT INTO users(id, name, color, device_key, avatar_seed, created_at) "
+            "VALUES(?,?,?,?,?,?)",
+            (user_id, name, color, device_key, secrets.token_hex(4), now()),
         )
         self.conn.commit()
         return self.get_user(user_id) or {}
+
+    def get_or_create_user(self, name: str, color: str = "", device_key: str = "") -> dict[str, Any]:
+        existing = self.get_user_by_name(name)
+        if existing:
+            return existing
+        return self.create_user(name, device_key=device_key, color=color)
+
+    def set_device_key(self, user_id: str, device_key: str) -> None:
+        self.conn.execute("UPDATE users SET device_key=? WHERE id=?", (device_key, user_id))
+        self.conn.commit()
+
+    def claim_name(self, name: str, device_key: str) -> tuple[dict[str, Any] | None, str]:
+        """Return (user, error). Names bind to the first device that claims them."""
+        user = self.get_user_by_name(name)
+        if user is None:
+            return self.create_user(name, device_key=device_key), ""
+        stored = user.get("device_key") or ""
+        if stored and device_key and stored != device_key:
+            return None, "That name belongs to another device. Pick a different name."
+        if not stored and device_key:
+            self.set_device_key(user["id"], device_key)
+        return user, ""
 
     def list_users(self) -> list[dict[str, Any]]:
         rows = self.conn.execute("SELECT * FROM users ORDER BY created_at").fetchall()
@@ -215,8 +237,7 @@ class Store:
             (user_id, user["name"], new_name, ip, stamp),
         )
         self.conn.execute(
-            "UPDATE messages SET name=? WHERE user_id=? AND created_at > ?",
-            (new_name, user_id, stamp - cooldown_seconds * 24),
+            "UPDATE messages SET name=? WHERE user_id=?", (new_name, user_id)
         )
         self.conn.commit()
         return self.get_user(user_id) or {}
@@ -277,6 +298,19 @@ class Store:
             ORDER BY CASE r.kind WHEN 'main' THEN 0 WHEN 'dm' THEN 1 ELSE 2 END, r.created_at
             """,
             (MAIN_ROOM, user_id),
+        ).fetchall()
+        return [dict(row) for row in rows]
+
+    def list_all_rooms(self) -> list[dict[str, Any]]:
+        """Every room, for the host console. No membership filter."""
+        rows = self.conn.execute(
+            """
+            SELECT r.*, (SELECT COUNT(*) FROM room_members m WHERE m.room_id=r.id) AS members,
+                   (SELECT MAX(seq) FROM messages msg WHERE msg.room_id=r.id) AS last_seq,
+                   (SELECT COUNT(*) FROM messages msg WHERE msg.room_id=r.id) AS message_count
+            FROM rooms r
+            ORDER BY CASE r.kind WHEN 'main' THEN 0 WHEN 'group' THEN 1 ELSE 2 END, r.created_at
+            """
         ).fetchall()
         return [dict(row) for row in rows]
 
@@ -415,6 +449,21 @@ class Store:
                 (room_id, limit),
             ).fetchall()
         return [self._decorate(row) or {} for row in reversed(rows)]
+
+    def get_messages(self, message_ids: Iterable[str]) -> dict[str, dict[str, Any]]:
+        ids = [message_id for message_id in message_ids if message_id]
+        if not ids:
+            return {}
+        marks = ",".join("?" for _ in ids)
+        rows = self.conn.execute(
+            f"SELECT * FROM messages WHERE id IN ({marks})", ids
+        ).fetchall()
+        result: dict[str, dict[str, Any]] = {}
+        for row in rows:
+            item = self._decorate(row)
+            if item:
+                result[item["id"]] = item
+        return result
 
     def messages_after(self, room_id: str, seq: int, limit: int = 200) -> list[dict[str, Any]]:
         rows = self.conn.execute(
