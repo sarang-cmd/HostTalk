@@ -1,63 +1,406 @@
-![logo vro.](https://raw.githubusercontent.com/tromoSM/HostTalk/refs/heads/main/static/gitsplash.png)
 # HostTalk
-#### HostTalk is a self hosted local network messaging system with cross-platform support.
----
-## Installaion
-- get the latest installer or the portable edition from [here](https://github.com/tromoSM/HostTalk/releases/latest) and install
-- or run this in your cmd (for windows only)
-  ```bash
-  winget install hosttalk
-  ```
-## Features
-- Real time chat syncing
-- Works on LAN/local-network(same wifi) while offline
-- Can be used across all devices connected to the same wifi
-- mobile PWA support
-- No cloud or logins
-- No fees, charges, subscription, data-costs nor ads
-- more themes and light,dark mode support 
-## Preview
-![preview](https://github.com/tromoSM/HostTalk/blob/main/Assets/gitpreview.webp?raw=true)
-## Requirements
-- 6767 port needs to be open in the local network
+
+A chat room for one local network. One machine runs the server. Everyone else opens a browser and joins with a name and the room password.
+
+Version 2.0.0, codename Roomtone. Apache 2.0.
+
+![The room at laptop width](static/screenshots/room-desktop.png)
+
+Messages live in a SQLite file on the host machine. They move between the browser and the host over the local network. No account, no cloud relay, no monthly bill. The screenshots in this file come from a demo room set up for the purpose. The people, names, and messages are placeholders.
+
+## Contents
+
+- [What this build adds](#what-this-build-adds)
+- [Screens](#screens)
+- [How it works](#how-it-works)
+- [Run it](#run-it)
+- [Set up the room](#set-up-the-room)
+- [Deploy it](#deploy-it)
+- [Settings](#settings)
+- [Command line](#command-line)
+- [HTTP API](#http-api)
+- [Data folder](#data-folder)
+- [Security model](#security-model)
+- [Tests](#tests)
+- [Troubleshooting](#troubleshooting)
+- [Repository layout](#repository-layout)
+
+## What this build adds
+
+The 1.x build shipped one room, a five character password check, and a page with a fixed port. This build rebuilds the server, the storage, and the interface.
+
+### Rooms and people
+
+- **Group rooms.** Named rooms hold 20 people by default. The host sets the cap. A full room refuses new members with a clear message.
+- **Direct threads.** Two people open a private thread from the people panel. The thread appears in the sidebar for both.
+- **DM passwords.** A member sets a password on a direct thread. The other side types it once and the browser remembers the unlock for the session.
+- **Invite links.** Each room issues a code with a use limit and a 7 day expiry. The link opens the join page with the code filled in.
+- **Unique colors.** The server hands out a color from a 20 step palette. Every entry meets a 4.5 to 1 contrast ratio against white text, so names stay readable.
+- **Nickname change.** A person renames in the settings sheet. The server enforces a one hour cooldown and writes each change to a log the host reads in the console.
+
+### Messages
+
+- **Quoting.** Reply attaches the original message as a quote. The quote jumps to the source on click.
+- **Reactions.** Ten emoji, toggled per person. The server keeps the counts.
+- **Edit and delete.** Authors edit or delete their own text. Delete leaves a quiet placeholder so the thread keeps its shape.
+- **Search.** The search sheet queries the rooms you belong to and jumps to the match.
+- **Link previews.** The server fetches a page title, description, and image. Private and loopback addresses are refused before any request leaves the machine.
+- **GIF search.** GIPHY search runs through the host, so the API key stays on the host. Search is off until a key is set.
+- **Typing and presence.** Typing pings and presence changes arrive over one server-sent event stream.
+
+### Files
+
+- **20 MB limit.** The host sets the number in the console. The server checks it again after compression.
+- **Client compression.** An oversized image is resized and re-encoded in the browser before upload. The original file stays untouched on disk.
+- **Any file type.** Images render in the thread. Everything else downloads as an attachment with its original name, size, and a SHA-256 digest.
+- **Drag, paste, pick.** Drop a file on the thread, paste from the clipboard, or use the paperclip.
+
+### Host tools
+
+- **A real console.** `/console` shows checks, people, rooms, logs, settings, LocalSend state, backups, and a stop button. It runs in a browser and replaces the terminal.
+- **Password change and reset.** The host changes the room password in the console or with one command. Both paths use bcrypt and store no plain text.
+- **Cleaner logs.** JSON lines, level filtering in the console, rotation at 2 MB with three backups, and a download button.
+- **Configurable port.** The default is 7284. The host edits the port in the console or in `config.json`. Port 6767 is gone.
+
+### Network tools
+
+- **LocalSend interop.** The server announces itself over multicast on UDP 53317 and answers the LocalSend v2 protocol. Files a phone sends land in the main room. The console lists devices seen on the network.
+- **Doctor command.** `python -m hosttalk doctor` checks the port, the data folder, free space, the network address, and the GIF key before you invite anyone.
+
+## Screens
+
+The join page states the promise, shows the address, and offers a QR code for a phone.
+
+![Join page](static/screenshots/join-desktop.png)
+
+The invite sheet carries the QR code, the address, and the steps in order.
+
+![Invite sheet](static/screenshots/invite-dialog.png)
+
+The host console puts checks, people, rooms, logs, and settings on one page.
+
+![Host console](static/screenshots/console.png)
+
+A phone gets the same room without an install step. The rail and people panel slide in from the edges.
+
+![The room at phone width](static/screenshots/room-mobile.png)
+
+Dark theme follows the device, or the host sets a default.
+
+![Dark theme](static/screenshots/room-dark.png)
+
+The marketing page explains the design and the limits of the tool.
+
+![How it works page](static/screenshots/about.png)
+
+Terms and privacy pages ship as drafts with the review step marked.
+
+![Terms page](static/screenshots/terms.png)
+
+The full set sits in `static/screenshots`. Capture notes live in `docs/SCREENSHOTS.md`.
+
+## How it works
+
+Four moving parts, all on the host machine.
+
+```
+browser  --HTTP-->  Flask app  --SQL -->  SQLite
+   ^                    |
+   |                    +-- files --> uploads/
+   +-- SSE stream <-----+-- events --> logs/
+
+phone (LocalSend) --UDP 53317 + HTTP--> same Flask app
+```
+
+### Request path
+
+1. A browser asks for `/`. Flask renders the join view with a bootstrap JSON blob on the body element. The content security policy blocks inline script, so every script is a file under `static/js`.
+2. The person posts a name and password to `/api/session`. The server checks the bcrypt hash, binds the name to a device key, and writes a signed session cookie.
+3. The page opens `/api/events`, one server-sent event stream. The server keeps a subscriber per connection and pushes message, presence, and typing events through it.
+4. A message posts to `/api/messages`. The server validates the text, writes a row, and publishes to the subscribers of the room. Every open browser paints the message without a refresh.
+
+### Storage
+
+SQLite in WAL mode, nine tables: `users`, `rooms`, `room_members`, `attachments`, `messages`, `reactions`, `invites`, `nickname_log`, `meta`. Message sequence numbers come from a per room counter, so pagination uses `before_seq` and stays stable while people type.
+
+Uploads go to `uploads/` with a random name. The database keeps the original filename, MIME type, byte count, and digest.
+
+### Sessions and names
+
+There are no accounts. A name belongs to the first device which claims it. The device key lives in local storage, so the same browser returns to the same name. A second device with the same name gets a refusal, which keeps impersonation cheap to spot. The host clears stale names by deleting them from the console.
+
+### Delivery
+
+One long-lived HTTP response per browser. The broker keeps subscribers grouped by room, sends a heartbeat every 20 seconds, and drops dead connections. Reconnect is automatic through the browser's `EventSource` retry.
+
+### Files and previews
+
+Uploads stream to disk in 64 KB chunks with a hard byte cap. Images under 20 MB render inline from `/api/files/<id>` with `X-Content-Type-Options: nosniff`. Previews fetch with a 6 second timeout, a size cap, and a DNS check against private ranges, so a posted link does not probe the network from the host.
+
+### LocalSend
+
+The manager announces a `HostTalk` device over multicast, listens for announcements, and serves the LocalSend v2 endpoints: `/api/localsend/v2/info`, `register`, `prepare-upload`, `upload`, and `cancel`. Files land in the main room with the sender alias attached.
+
+## Run it
+
+Python 3.10 or newer. No Node build step.
+
 ### Windows
-- Windows 10 (1909/2019 nov or newer)
-- Windows 11 (All)
->[!NOTE]
-> System tray and console control only exist in windows
-### Linux
->[!TIP]
-> iwgetid is used. this requires wireless-tools
-#### Ubuntu
-- Ubuntu 20.04 LTS+
-#### Debian
-- Debian 11+
-#### Arch Linux
-- Fedora 335+
-### MacOS
-- MacOS 11 (Big sur) or later
-## Opening on another device
-- Make sure the devices are connected to the same wifi
-- Turn off any VPN
-- Start the server on the desktop
-- HostTalk will open a site on your default browser on the desktop
-- Right click on the the site and click invite
-- Go to the address shown in the invite popup in any device connected to the same network
-- If other devices say 'page not found' see [Troubleshooting](#troubleshooting)
-## troubleshooting
-- Do not use localhost or 127.0.0.1 to connect to other devices other than your desktop
-- Turn off any VPN
-- Firewalls may block the connection. allow the app
-## Third party licenses
-### Socket io 
-- this project uses third-party open source components
 
-| future features |  description |
-|--|--|
-| Notifications | Notifications when away |
+```bat
+git clone https://github.com/sarang-cmd/HostTalk
+cd HostTalk
+py -m venv .venv
+.venv\Scripts\python -m pip install -r requirements.txt
+deploy\hosttalk.bat
+```
 
-code : v0.9
-releases : v0.9
+The batch file creates the virtualenv on first run, then starts the server and opens the browser.
 
-#### [send feedback or request features](https://tromosm.ct.ws/?feedback=true&utm_source=read_easypycode)
-#### © 2026 tromoSM. Licensed under apache 2.0.
+### macOS and Linux
+
+```bash
+git clone https://github.com/sarang-cmd/HostTalk
+cd HostTalk
+python3 -m venv .venv
+.venv/bin/pip install -r requirements.txt
+.venv/bin/python server.py
+```
+
+The server prints a local address, a network address, and the console URL. It opens a browser unless `--headless` is set.
+
+### Container
+
+```bash
+cd deploy
+docker compose up --build
+```
+
+The compose file sets `network_mode: host`, because multicast does not cross the default bridge. Set `SERVER_PASSWORD` before the first start.
+
+## Set up the room
+
+First run has no password. Two paths, same result.
+
+**Browser.** Open `http://127.0.0.1:7284/console` on the host. The first screen asks for a room name, a password, a port, and whether to look for LocalSend devices. Save. The console opens.
+
+**Terminal.** One command, no prompts:
+
+```bash
+.venv/bin/python -m hosttalk setup --password "frontroom" --room "Front room" --port 7284
+```
+
+Then start the server and open the console. The console shows a check list. Green means fine. Amber means a setting needs attention, usually the GIPHY key or a Wi-Fi name the system does not report.
+
+Change the password later with the console form, or:
+
+```bash
+.venv/bin/python -m hosttalk reset-password
+```
+
+## Deploy it
+
+Service files and examples live in `deploy/`.
+
+| Target | File | Notes |
+| --- | --- | --- |
+| systemd | `deploy/hosttalk.service` | Hardened unit, data in `/var/lib/hosttalk` |
+| systemd helper | `deploy/install-service.sh` | Creates the user, the data folder, and the unit |
+| launchd | `deploy/com.hosttalk.room.plist` | macOS, logs into the data folder |
+| Docker | `deploy/Dockerfile` | Slim image, non-root user, health check |
+| Compose | `deploy/docker-compose.yml` | Host network, named volume |
+| Caddy | `deploy/Caddyfile` | Local HTTPS, buffering off for the event stream |
+| nginx | `deploy/nginx.conf` | Reverse proxy with a long read timeout |
+| Windows | `deploy/hosttalk.bat` | Local start from a folder with a virtualenv |
+
+Install as a Linux service:
+
+```bash
+sudo cp -r . /opt/hosttalk
+sudo bash /opt/hosttalk/deploy/install-service.sh
+```
+
+The unit sets `HOSTTALK_HOME=/var/lib/hosttalk`, restarts on failure, and keeps the data folder writable while the rest of the filesystem stays read only.
+
+Put a proxy in front when you want a hostname or HTTPS. The event stream needs `proxy_buffering off` and a read timeout measured in hours, not seconds. Both example configs carry those settings.
+
+## Settings
+
+Settings live in `config.json` inside the data folder, mode 0600. The console edits the file through the API. Environment variables override the file for one run.
+
+| Setting | Default | Console | Environment |
+| --- | --- | --- | --- |
+| Port | 7284 | yes | `HOSTTALK_PORT` |
+| Bind address | 0.0.0.0 | yes | `HOSTTALK_BIND` |
+| Room name | Front room | yes | `HOSTTALK_ROOM_NAME` |
+| Files limit | 20 MB | yes | `HOSTTALK_MAX_UPLOAD_MB` |
+| Room member cap | 20 | yes | `HOSTTALK_MAX_MEMBERS` |
+| Default theme | auto | yes | |
+| Log level | INFO | yes | `LOG_LEVEL` |
+| Link previews | on | yes | |
+| GIF search | on, no key | yes | `GIPHY_API_KEY` |
+| LocalSend | on | yes | `HOSTTALK_LOCALSEND`, `HOSTTALK_LS_PIN` |
+| Console local only | on | yes | `HOSTTALK_CONSOLE_LOCAL_ONLY` |
+| Data folder | platform default | CLI | `HOSTTALK_HOME` |
+
+Changing the port or the bind address asks for a restart. The console says so and shows a marker until the server restarts.
+
+## Command line
+
+```
+hosttalk serve [--port 7284] [--host 0.0.0.0] [--data-dir PATH]
+               [--headless] [--log-level INFO] [--no-localsend] [--reload]
+hosttalk setup [--password ...] [--room ...] [--port ...] [--non-interactive]
+hosttalk config show | path | get KEY | set KEY VALUE
+hosttalk reset-password [--password ...]
+hosttalk doctor
+hosttalk version
+```
+
+`server.py` is a thin entry which calls `hosttalk.cli.main`, so `python server.py` behaves like `python -m hosttalk serve`.
+
+## HTTP API
+
+All routes answer JSON with an `ok` field. Cookies carry the session. Every path under `/api` sends `Cache-Control: no-store`.
+
+| Method | Path | Purpose |
+| --- | --- | --- |
+| GET | `/api/status` | Public settings for the join page |
+| POST | `/api/setup` | First run, host machine only |
+| POST | `/api/session` | Join with a name and password |
+| GET | `/api/me` | Current person, rooms, palette |
+| PATCH | `/api/me` | Rename, change color |
+| GET | `/api/events` | Server-sent event stream |
+| GET | `/api/rooms` | Rooms for the signed in person |
+| POST | `/api/rooms` | Create a group room |
+| POST | `/api/rooms/join` | Join with an invite code |
+| POST | `/api/rooms/<id>/leave` | Leave a room |
+| POST | `/api/rooms/<id>/invite` | Create an invite code |
+| POST | `/api/rooms/<id>/verify` | Check a room password |
+| POST | `/api/dm` | Open a direct thread |
+| GET | `/api/rooms/<id>/messages` | Page of messages |
+| POST | `/api/messages` | Send text, file, or GIF |
+| PATCH | `/api/messages/<id>` | Edit your message |
+| DELETE | `/api/messages/<id>` | Delete your message |
+| POST | `/api/messages/<id>/reactions` | Toggle a reaction |
+| POST | `/api/uploads` | Upload a file |
+| GET | `/api/files/<id>` | Download a file |
+| GET | `/api/previews` | Link preview, guarded |
+| GET | `/api/gifs` | GIF search through the host |
+| GET | `/api/search` | Search your rooms |
+| POST | `/api/host/session` | Console sign in |
+| GET | `/api/host/summary` | Checks, rooms, people, stats |
+| PATCH | `/api/host/settings` | Save settings |
+| POST | `/api/host/password` | Change the room password |
+| GET | `/api/host/logs` | Filtered log records |
+| GET | `/api/host/export` | Room export as JSON |
+| POST | `/api/host/rooms/<id>/clear` | Delete room messages |
+| POST | `/api/host/users/<id>/disconnect` | End a session |
+| POST | `/api/host/shutdown` | Stop the server, host machine only |
+| GET | `/api/localsend/v2/info` | LocalSend identity |
+| POST | `/api/localsend/v2/register` | LocalSend discovery |
+| POST | `/api/localsend/v2/prepare-upload` | LocalSend handshake |
+| POST | `/api/localsend/v2/upload` | LocalSend file body |
+
+Host routes need the console session cookie and, by default, a loopback address.
+
+## Data folder
+
+```
+~/.local/share/hosttalk/        Linux
+~/Library/Application Support/HostTalk/   macOS
+%APPDATA%\HostTalk\            Windows
+```
+
+```
+config.json      settings, password hash, secret key (0600)
+hosttalk.db      messages, rooms, people, attachments, reactions
+uploads/         files, random names
+logs/            hosttalk.jsonl, rotated at 2 MB, three backups
+```
+
+Copy the folder to back up everything. Delete a room in the console to remove its messages, or delete the folder to start over.
+
+## Security model
+
+What this build does:
+
+- bcrypt for the room password and for locked direct threads, cost 12
+- signed session cookie, HttpOnly, SameSite Lax, 30 days
+- host console behind the same password plus a loopback check
+- rate limits on join attempts, messages, uploads, and typing pings
+- content security policy with `script-src 'self'` and no inline handlers
+- `nosniff`, `SAMEORIGIN`, `no-referrer`, and a permissions policy on every response
+- link previews refuse loopback, link local, and private addresses
+- uploads capped by bytes during the stream, not after
+- config file written atomically with mode 0600
+
+What it does not do:
+
+- no end to end encryption, traffic inside the local network is plain HTTP
+- no accounts, so a name is a claim, not an identity
+- no relay across networks, a VPN or a tunnel is your job
+- no cloud backup
+
+Run HostTalk on hardware you control, on a network you trust.
+
+## Tests
+
+```bash
+.venv/bin/pip install -r requirements-dev.txt
+.venv/bin/ruff check hosttalk tests
+.venv/bin/pytest
+```
+
+The suite covers config validation, store behaviour, the HTTP surface, the password flow, rate limits, uploads, preview guarding, and the room member rules. GitHub Actions runs the same commands, then boots the app and asks `/healthz` for a real answer.
+
+## Troubleshooting
+
+**Guests see a login page but the join fails.** Check the password, then check the address. Print it with `python -m hosttalk doctor` on the host. A VPN on either device breaks local routing.
+
+**The port is in use.** Pick another in the console, or run `python server.py --port 7300` for one session. On Windows, `netstat -ano | findstr 7284` shows the owner.
+
+**LocalSend finds nothing.** Multicast needs a flat network. Guest Wi-Fi and client isolation block it. The UDP port is 53317.
+
+**GIF search says it needs a key.** Get a free key at `developers.giphy.com`, paste it into the console, save. The key stays on the host.
+
+**The console refuses the host machine.** With `console_local_only` on, the console answers only loopback requests. Open it at `127.0.0.1`, not the network address.
+
+**Logs are empty.** The console filters by level. Set the filter to all levels and press refresh.
+
+## Repository layout
+
+```
+hosttalk/           server package
+  app.py            app factory, page routes, headers
+  cli.py            serve, setup, config, doctor
+  config.py         settings, defaults, validation
+  store.py          SQLite schema and queries
+  auth.py           validation, palette, rate limits
+  api_session.py    join, profile, presence, events
+  api_chat.py       rooms, messages, reactions, search
+  api_files.py      uploads, downloads, LocalSend
+  api_host.py       console API
+  diagnostics.py    check list for the console
+  events.py         server-sent event broker
+  localsend.py      discovery and transfer protocol
+  previews.py       guarded link previews
+  gifs.py           GIPHY client with cache
+  presence.py       who is here
+static/
+  css               tokens, base, app, console, marketing
+  js                core, render, app, console
+  fonts             Archivo, Public Sans, Noto Emoji
+  screenshots       images used in this file
+  lib               QR, compression, gzip helpers
+templates/          index, console, about, terms, privacy, error
+deploy/             systemd, launchd, Docker, proxies
+tests/              pytest suite
+docs/               notes on screenshots and the upgrade
+```
+
+## Credits
+
+Type: Archivo and Public Sans, SIL Open Font License. Noto Emoji for reaction glyphs. QR encoding by `qrcode-generator`. Compression by `compressorjs` and `fflate`. The LocalSend protocol is defined by the LocalSend project.
+
+The code is Apache 2.0. The Terms and Privacy pages ship as drafts. Fill in the operator details before you publish a deployment.
