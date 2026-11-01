@@ -46,14 +46,32 @@ def public_attachment(attachment: dict[str, Any] | None) -> dict[str, Any] | Non
     }
 
 
+def avatar_url(user_id: str, filename: str, updated: Any = 0) -> str:
+    """Empty when the person has no picture, so the client falls back to initials."""
+    if not filename:
+        return ""
+    try:
+        version = int(float(updated or 0))
+    except (TypeError, ValueError):
+        version = 0
+    return f"/api/avatars/{user_id}?v={version}"
+
+
 def public_person(user: dict[str, Any], services_: Services) -> dict[str, Any]:
     person = services_.presence.get(user["id"])
     color = (person.color if person else user.get("color")) or "#34527A"
+    role = (person.role if person else user.get("role")) or "member"
+    avatar_file = person.avatar_file if person else user.get("avatar_file") or ""
+    updated = person.avatar_updated if person else user.get("avatar_updated") or 0
     return {
         "id": user["id"],
         "name": user["name"],
         "color": color,
         "avatar_seed": user.get("avatar_seed") or user["id"][:8],
+        "avatar_url": avatar_url(user["id"], avatar_file, updated),
+        "role": role,
+        "badge_icon": (person.badge_icon if person else user.get("badge_icon")) or "",
+        "badge_text": (person.badge_text if person else user.get("badge_text")) or "",
         "online": bool(person),
     }
 
@@ -93,6 +111,8 @@ def serialize_message(
         "color": "",
     }
     person = services_.presence.get(message["user_id"])
+    avatar_file = person.avatar_file if person else user.get("avatar_file") or ""
+    avatar_updated = person.avatar_updated if person else user.get("avatar_updated") or 0
     attachment = None
     if message.get("attachment_id"):
         attachment = public_attachment(services_.store.get_attachment(message["attachment_id"]))
@@ -116,6 +136,10 @@ def serialize_message(
         "name": message["name"],
         "color": (person.color if person else user.get("color")) or "#34527A",
         "avatar_seed": user.get("avatar_seed") or "",
+        "avatar_url": avatar_url(message["user_id"], avatar_file, avatar_updated),
+        "role": (person.role if person else user.get("role")) or "member",
+        "badge_icon": (person.badge_icon if person else user.get("badge_icon")) or "",
+        "badge_text": (person.badge_text if person else user.get("badge_text")) or "",
         "kind": message["kind"],
         "body": message["body"],
         "attachment": attachment,
@@ -125,6 +149,7 @@ def serialize_message(
         "created_at": message["created_at"],
         "edited_at": message.get("edited_at"),
         "deleted_at": message.get("deleted_at"),
+        "pinned_at": message.get("pinned_at"),
     }
 
 
