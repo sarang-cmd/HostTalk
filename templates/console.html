@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="{{ theme if theme != 'auto' else 'light' }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Host console · HostTalk</title>
+  <meta name="robots" content="noindex">
+  <meta name="theme-color" content="#f1f0eb">
+  <link rel="icon" href="/static/icons/favicon.ico" sizes="any">
+  <link rel="stylesheet" href="/static/css/tokens.css?v={{ static_v }}">
+  <link rel="stylesheet" href="/static/css/base.css?v={{ static_v }}">
+  <link rel="stylesheet" href="/static/css/console.css?v={{ static_v }}">
+  <script type="module" src="/static/js/console.js?v={{ static_v }}"></script>
+</head>
+<body class="console-page">
+  <a class="skip-link" href="#console-main">Skip to console</a>
+  <header class="console-top">
+    <a class="brand" href="/">
+      <svg class="brand__mark" viewBox="0 0 32 32" aria-hidden="true">
+        <rect width="32" height="32" rx="9" fill="var(--ink)"/>
+        <rect class="mark-room" x="9" y="14" width="14" height="9" rx="1.5"/>
+        <circle class="mark-dot" cx="22" cy="10" r="2.4"/>
+      </svg>
+      <span>HostTalk</span>
+    </a>
+    <div class="console-top__actions">
+      <span class="console-top__tag">Host console</span>
+      <a class="btn btn--sm" href="/">Open the room</a>
+    </div>
+  </header>
+
+  <main id="console-main">
+    <!-- Setup -->
+    <section class="console-login" id="setup-view" hidden>
+      <div class="setup-card">
+        <p class="console-top__tag">First run</p>
+        <h1>Set up this room</h1>
+        <p>Pick a password and a port. Everyone on this network joins with the address and the password. You can change every setting later.</p>
+        <form class="setup-form" id="setup-form" novalidate>
+          <div class="form-grid">
+            <div class="field">
+              <label for="setup-room">Room name</label>
+              <input class="input" id="setup-room" name="room_name" maxlength="40" required value="{{ room_name }}">
+            </div>
+            <div class="field">
+              <label for="setup-password">Room password</label>
+              <input class="input" id="setup-password" name="password" type="password" minlength="4" required autocomplete="new-password">
+              <span class="field__hint">At least 4 characters.</span>
+            </div>
+            <div class="field">
+              <label for="setup-port">Port</label>
+              <input class="input" id="setup-port" name="port" type="number" min="1024" max="65535" value="7284" required>
+              <span class="field__hint">Default 7284. Restart to change later.</span>
+            </div>
+            <div class="field">
+              <label for="setup-bind">Who reaches this server</label>
+              <select class="select" id="setup-bind" name="bind">
+                <option value="0.0.0.0" selected>Everyone on this network</option>
+                <option value="127.0.0.1">This machine only</option>
+              </select>
+            </div>
+          </div>
+          <label class="toggle"><input type="checkbox" id="setup-localsend" checked> Find LocalSend devices on this network</label>
+          <p class="form-error" id="setup-error" role="alert"></p>
+          <button class="btn btn--primary" type="submit" id="setup-submit">Finish setup</button>
+        </form>
+        <p class="form-note" id="setup-note"></p>
+      </div>
+    </section>
+
+    <!-- Login -->
+    <section class="console-login" id="login-view" hidden>
+      <div class="console-login__card">
+        <p class="console-top__tag">Host console</p>
+        <h1>Sign in</h1>
+        <p id="login-sub">The host console changes server settings, reads logs, and stops the server.</p>
+        <form class="console-login__form" id="login-form" novalidate>
+          <div class="field">
+            <label for="login-password">Room password</label>
+            <input class="input" id="login-password" type="password" autocomplete="current-password" required>
+          </div>
+          <p class="form-error" id="login-error" role="alert"></p>
+          <button class="btn btn--primary btn--block" type="submit" id="login-submit">Open console</button>
+        </form>
+        <p class="form-note" id="login-local-note"></p>
+      </div>
+    </section>
+
+    <!-- Dashboard -->
+    <div class="console-wrap" id="dashboard" hidden>
+      <div class="console-hero">
+        <div>
+          <h1 id="dash-room">{{ room_name }}</h1>
+          <div class="console-hero__meta">
+            <span class="pill" id="dash-state"><span class="dot"></span> Live</span>
+            <span>Address <strong id="dash-address">Loading</strong></span>
+            <span>Port <strong id="dash-port">7284</strong></span>
+            <span>Version <strong id="dash-version">{{ version }}</strong></span>
+          </div>
+        </div>
+        <div class="console-actions">
+          <button class="btn btn--sm" type="button" id="refresh-all">Refresh</button>
+          <a class="btn btn--sm" href="/" >Open room</a>
+        </div>
+      </div>
+
+      <div class="console-grid">
+        <div class="console-col">
+          <section class="card" aria-labelledby="checks-title">
+            <div class="card__head">
+              <h2 id="checks-title">Checks</h2>
+              <span class="pill" id="checks-status">Loading</span>
+            </div>
+            <div class="card__body card__body--tight">
+              <ul class="check-list" id="checks"></ul>
+            </div>
+          </section>
+
+          <section class="card" aria-labelledby="people-title">
+            <div class="card__head">
+              <h2 id="people-title">People</h2>
+              <span class="console-top__tag" id="people-count"></span>
+            </div>
+            <div class="table-scroll">
+              <table class="table">
+                <thead>
+                  <tr><th>Name</th><th>Connected</th><th>Rooms</th><th></th></tr>
+                </thead>
+                <tbody id="people-body"></tbody>
+              </table>
+            </div>
+          </section>
+
+          <section class="card" aria-labelledby="rooms-title">
+            <div class="card__head">
+              <h2 id="rooms-title">Rooms</h2>
+              <span class="console-top__tag" id="rooms-count"></span>
+            </div>
+            <div class="table-scroll">
+              <table class="table">
+                <thead>
+                  <tr><th>Room</th><th>Members</th><th>Messages</th><th></th></tr>
+                </thead>
+                <tbody id="rooms-body"></tbody>
+              </table>
+            </div>
+          </section>
+
+          <section class="card" aria-labelledby="logs-title">
+            <div class="card__head">
+              <h2 id="logs-title">Logs</h2>
+              <div class="console-actions">
+                <select class="select" id="log-level" aria-label="Log level" style="min-height:32px;padding:4px 8px;font-size:12px">
+                  <option value="">All levels</option>
+                  <option value="INFO">Info and above</option>
+                  <option value="WARNING">Warnings and above</option>
+                  <option value="ERROR">Errors</option>
+                </select>
+                <button class="btn btn--sm" type="button" id="logs-refresh">Refresh</button>
+                <a class="btn btn--sm" href="/api/host/logs/download">Download</a>
+              </div>
+            </div>
+            <div class="log-list" id="logs"></div>
+          </section>
+        </div>
+
+        <div class="console-col">
+          <section class="card" aria-labelledby="settings-title">
+            <div class="card__head">
+              <h2 id="settings-title">Server settings</h2>
+              <span class="pill" id="restart-pill" hidden>Restart to apply</span>
+            </div>
+            <div class="card__body">
+              <form class="settings-form" id="settings-form">
+                <div class="field">
+                  <label for="set-room-name">Room name</label>
+                  <input class="input" id="set-room-name" maxlength="40">
+                </div>
+                <div class="form-grid">
+                  <div class="field">
+                    <label for="set-port">Port</label>
+                    <input class="input" id="set-port" type="number" min="1024" max="65535">
+                  </div>
+                  <div class="field">
+                    <label for="set-bind">Reach</label>
+                    <select class="select" id="set-bind">
+                      <option value="0.0.0.0">This network</option>
+                      <option value="127.0.0.1">This machine</option>
+                    </select>
+                  </div>
+                  <div class="field">
+                    <label for="set-max-upload">Files limit, MB</label>
+                    <input class="input" id="set-max-upload" type="number" min="1" max="100">
+                  </div>
+                  <div class="field">
+                    <label for="set-max-members">Room limit</label>
+                    <input class="input" id="set-max-members" type="number" min="2" max="200">
+                  </div>
+                  <div class="field">
+                    <label for="set-theme">Default theme</label>
+                    <select class="select" id="set-theme">
+                      <option value="auto">Follow the device</option>
+                      <option value="light">Light</option>
+                      <option value="dark">Dark</option>
+                    </select>
+                  </div>
+                  <div class="field">
+                    <label for="set-level">Log level</label>
+                    <select class="select" id="set-level">
+                      <option>DEBUG</option>
+                      <option>INFO</option>
+                      <option>WARNING</option>
+                      <option>ERROR</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div class="field">
+                  <label for="set-giphy">GIPHY key</label>
+                  <input class="input" id="set-giphy" type="password" autocomplete="off" placeholder="Not set">
+                  <span class="field__hint">Only needed for GIF search. Get a free key at developers.giphy.com.</span>
+                </div>
+
+                <label class="toggle"><input type="checkbox" id="set-previews"> Fetch link previews</label>
+                <label class="toggle"><input type="checkbox" id="set-gifs"> Allow GIF search</label>
+                <label class="toggle"><input type="checkbox" id="set-console-local"> Open the console from this machine only</label>
+                <label class="toggle"><input type="checkbox" id="set-localsend"> LocalSend discovery</label>
+                <div class="form-grid">
+                  <div class="field">
+                    <label for="set-ls-alias">LocalSend name</label>
+                    <input class="input" id="set-ls-alias" maxlength="48">
+                  </div>
+                  <div class="field">
+                    <label for="set-ls-pin">LocalSend PIN</label>
+                    <input class="input" id="set-ls-pin" maxlength="32" placeholder="Optional">
+                  </div>
+                </div>
+                <p class="form-status" id="settings-status" role="status"></p>
+                <button class="btn btn--primary" type="submit" id="settings-save">Save settings</button>
+              </form>
+            </div>
+          </section>
+
+          <section class="card" aria-labelledby="ls-title">
+            <div class="card__head">
+              <h2 id="ls-title">LocalSend</h2>
+              <button class="btn btn--sm" type="button" id="ls-scan">Scan</button>
+            </div>
+            <div class="card__body">
+              <p class="form-note" id="ls-status">Checking.</p>
+              <ul id="ls-devices" class="check-list"></ul>
+              <p class="form-note">Phones and computers running LocalSend appear here. Files they send land in the room.</p>
+            </div>
+          </section>
+
+          <section class="card" aria-labelledby="password-title">
+            <div class="card__head">
+              <h2 id="password-title">Room password</h2>
+            </div>
+            <div class="card__body">
+              <form class="settings-form" id="password-form">
+                <div class="field">
+                  <label for="pw-current">Current password</label>
+                  <input class="input" id="pw-current" type="password" autocomplete="current-password">
+                </div>
+                <div class="field">
+                  <label for="pw-new">New password</label>
+                  <input class="input" id="pw-new" type="password" autocomplete="new-password" minlength="4">
+                </div>
+                <p class="form-status" id="pw-status" role="status"></p>
+                <button class="btn" type="submit">Change password</button>
+              </form>
+            </div>
+          </section>
+
+          <section class="card" aria-labelledby="data-title">
+            <div class="card__head">
+              <h2 id="data-title">Data</h2>
+            </div>
+            <div class="card__body">
+              <p class="form-note" id="data-note">Messages, uploads, and logs live on this machine.</p>
+              <div class="danger-row">
+                <p>Download the main room as JSON.</p>
+                <a class="btn btn--sm" href="/api/host/export?room=main">Export</a>
+              </div>
+              <hr class="rule">
+              <div class="danger-row">
+                <div>
+                  <p>Stop the server</p>
+                  <span class="form-note">Open the room again by starting HostTalk.</span>
+                </div>
+                <button class="btn btn--danger btn--sm" type="button" id="shutdown-btn">Stop</button>
+              </div>
+            </div>
+          </section>
+
+          <p class="form-note">HostTalk {{ version }} · <a href="/about">About</a> · <a href="/terms">Terms</a> · <a href="/privacy">Privacy</a></p>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <dialog class="sheet" id="console-confirm" aria-labelledby="console-confirm-title">
+    <div class="sheet__head">
+      <div>
+        <h2 class="sheet__title" id="console-confirm-title">Are you sure?</h2>
+        <p class="sheet__sub" id="console-confirm-sub"></p>
+      </div>
+      <button class="icon-btn" type="button" data-close-dialog aria-label="Close">
+        <svg class="icon" aria-hidden="true"><use href="#i-close"></use></svg>
+      </button>
+    </div>
+    <div class="sheet__body">
+      <p class="confirm-body" id="console-confirm-body"></p>
+    </div>
+    <div class="sheet__foot">
+      <button class="btn" type="button" data-close-dialog>Cancel</button>
+      <button class="btn btn--danger" type="button" id="console-confirm-action">Continue</button>
+    </div>
+  </dialog>
+
+  <div class="toast-stack" id="toasts" aria-live="polite"></div>
+
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+    <defs>
+      <symbol id="i-close" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
+    </defs>
+  </svg>
+</body>
+</html>
