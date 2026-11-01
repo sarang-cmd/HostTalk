@@ -226,3 +226,142 @@ def test_old_data_folders_gain_the_new_columns(tmp_path):
         assert promoted["role"] == "host"
     finally:
         store.close()
+
+
+def test_badges_take_one_icon_and_four_characters(client):
+    join(client)
+    saved = client.patch("/api/me", json={"badge_icon": "shield", "badge_text": "OPS"})
+    assert saved.status_code == 200
+    user = saved.get_json()["user"]
+    assert user["badge_icon"] == "shield"
+    assert user["badge_text"] == "OPS"
+
+    message = client.post("/api/messages", json={"room_id": "main", "body": "Hello"}).get_json()
+    assert message["message"]["badge_text"] == "OPS"
+
+    too_long = client.patch("/api/me", json={"badge_icon": "shield", "badge_text": "ABCDE"})
+    assert too_long.status_code == 400
+    assert too_long.get_json()["field"] == "badge_text"
+
+    unknown = client.patch("/api/me", json={"badge_icon": "rocket", "badge_text": "HI"})
+    assert unknown.status_code == 400
+    assert unknown.get_json()["field"] == "badge_icon"
+
+    cleared = client.patch("/api/me", json={"badge_icon": "", "badge_text": ""})
+    assert cleared.get_json()["user"]["badge_text"] == ""
+
+
+def test_any_emoji_reaction(client):
+    join(client)
+    message = client.post("/api/messages", json={"room_id": "main", "body": "Ship it"}).get_json()
+    message_id = message["message"]["id"]
+    for emoji in ("🚀", "🧑‍🚀", "🫡"):
+        response = client.post(f"/api/messages/{message_id}/reactions", json={"emoji": emoji})
+        assert response.status_code == 200, emoji
+        assert emoji in response.get_json()["reactions"]
+    plain = client.post(f"/api/messages/{message_id}/reactions", json={"emoji": "yes"})
+    assert plain.status_code == 400
+
+
+def test_only_the_host_adds_custom_emoji(app):
+    host_client = app.test_client()
+    member_client = app.test_client()
+    host_client.post("/api/session", json={"name": "Ada", "password": "frontroom", "device_key": "a"})
+    member_client.post(
+        "/api/session", json={"name": "Rae", "password": "frontroom", "device_key": "b"}
+    )
+    refused = member_client.post(
+        "/api/emoji",
+        data={"name": "party", "file": (io.BytesIO(_png()), "party.png")},
+        content_type="multipart/form-data",
+    )
+    assert refused.status_code == 403
+
+    added = host_client.post(
+        "/api/emoji",
+        data={"name": "party", "file": (io.BytesIO(_png()), "party.png")},
+        content_type="multipart/form-data",
+    )
+    assert added.status_code == 200, added.get_json()
+    emoji = added.get_json()["emoji"]
+    assert emoji["token"].startswith("custom:")
+    assert host_client.get(emoji["url"]).status_code == 200
+
+    message = host_client.post("/api/messages", json={"room_id": "main", "body": "Hi"}).get_json()
+    reacted = host_client.post(
+        f"/api/messages/{message['message']['id']}/reactions", json={"emoji": emoji["token"]}
+    )
+    assert reacted.status_code == 200
+    assert emoji["token"] in reacted.get_json()["reactions"]
+
+    assert host_client.delete(f"/api/emoji/{emoji['id']}").status_code == 200
+    gone = host_client.post(
+        f"/api/messages/{message['message']['id']}/reactions", json={"emoji": emoji["token"]}
+    )
+    assert gone.status_code == 404
+
+
+def test_devices_keep_their_name(client):
+    first = join(client, "Mara", device_key="laptop-one")
+    assert first.get_json()["user"]["name"] == "Mara"
+    client.delete("/api/session")
+    again = join(client, "Someone Else", device_key="laptop-one")
+    assert again.get_json()["user"]["name"] == "Mara"
+
+
+def test_rooms_inside_rooms(app):
+    owner = app.test_client()
+    guest = app.test_client()
+    owner.post("/api/session", json={"name": "Ada", "password": "frontroom", "device_key": "a"})
+    guest.post("/api/session", json={"name": "Rae", "password": "frontroom", "device_key": "b"})
+
+    outer = owner.post(
+        "/api/rooms", json={"name": "Studio", "password": "outerpass"}
+    ).get_json()["room"]
+    inner = owner.post(
+        "/api/rooms",
+        json={"name": "Corner", "parent_id": outer["id"], "password": "innerpass"},
+    ).get_json()["room"]
+    assert inner["parent_id"] == outer["id"]
+
+    # The guest sees nothing yet: they are outside the outer room.
+    listed = guest.get("/api/rooms").get_json()["rooms"]
+    assert all(room["id"] != inner["id"] for room in listed)
+
+    blocked = guest.post(f"/api/rooms/{inner['id']}/enter", json={"password": "innerpass"})
+    assert blocked.status_code == 403
+
+    entered_outer = guest.post(f"/api/rooms/{outer['id']}/enter", json={"password": "outerpass"})
+    assert entered_outer.status_code == 200
+    listed = guest.get("/api/rooms").get_json()["rooms"]
+    assert any(room["id"] == inner["id"] and not room["joined"] for room in listed)
+
+    wrong = guest.post(f"/api/rooms/{inner['id']}/enter", json={"password": "nope"})
+    assert wrong.status_code == 401
+    right = guest.post(f"/api/rooms/{inner['id']}/enter", json={"password": "innerpass"})
+    assert right.status_code == 200
+    assert right.get_json()["room"]["joined"] is True
+
+
+def test_host_controls(app):
+    host_client = app.test_client()
+    member_client = app.test_client()
+    joined = join(host_client).get_json()["user"]
+    assert joined["role"] == "host"
+    join(member_client, "Rae", device_key="rae-laptop")
+    assert host_client.post("/api/host/session", json={"password": "frontroom"}).status_code == 200
+    saved = host_client.patch(
+        "/api/host/settings",
+        json={"read_only": True, "slow_mode_seconds": 30, "notice_text": "Back at six"},
+    )
+    assert saved.status_code == 200
+    status = member_client.get("/api/status").get_json()["server"]
+    assert status["read_only"] is True
+    assert status["slow_mode_seconds"] == 30
+    assert status["notice_text"] == "Back at six"
+
+    blocked = member_client.post("/api/messages", json={"room_id": "main", "body": "Hello"})
+    assert blocked.status_code == 403
+
+    allowed = host_client.post("/api/messages", json={"room_id": "main", "body": "Hello"})
+    assert allowed.status_code == 200
