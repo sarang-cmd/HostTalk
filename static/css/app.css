@@ -318,6 +318,45 @@ body.app {
   font-size: 11px;
 }
 
+.avatar--xl {
+  width: 56px;
+  height: 56px;
+  border-radius: 12px;
+  font-size: 18px;
+}
+
+.avatar-slot {
+  display: inline-flex;
+  flex: none;
+}
+
+.avatar--img {
+  object-fit: cover;
+  background: var(--surface-2);
+}
+
+.role {
+  display: inline-block;
+  padding: 0 4px;
+  border: 1px solid currentColor;
+  border-radius: 3px;
+  font-family: var(--font-ui);
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 15px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  vertical-align: 1px;
+}
+
+.role--host {
+  color: var(--accent);
+}
+
+.role--moderator {
+  color: var(--muted);
+}
+
 .join__foot {
   display: flex;
   align-items: center;
@@ -520,6 +559,19 @@ body.app {
   align-items: center;
   justify-content: center;
   font-variant-numeric: tabular-nums;
+}
+
+.rail__item--child {
+  padding-left: 26px;
+  border-left: 1px solid var(--line);
+  margin-left: 8px;
+}
+
+.rail__badge {
+  margin-left: auto;
+  font-size: 10px;
+  color: var(--muted);
+  white-space: nowrap;
 }
 
 .rail__empty {
@@ -737,6 +789,41 @@ body.app {
   user-select: none;
 }
 
+.msg__avatar.avatar--img {
+  object-fit: cover;
+  background: var(--surface-2);
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 0 4px 0 3px;
+  border: 1px solid var(--line-strong);
+  border-radius: 3px;
+  font-family: var(--font-ui);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  line-height: 15px;
+  text-transform: uppercase;
+  color: var(--ink-2);
+  vertical-align: 1px;
+}
+
+.badge .icon {
+  width: 11px;
+  height: 11px;
+}
+
+.msg__pinned {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: var(--text-xs);
+  color: var(--muted);
+}
+
 .msg--continued .msg__avatar {
   visibility: hidden;
 }
@@ -800,18 +887,28 @@ body.app {
 
 .msg__toolbar {
   position: absolute;
-  top: -10px;
-  right: 8px;
+  top: -14px;
+  right: 10px;
   display: flex;
-  gap: 2px;
-  padding: 2px;
+  align-items: center;
+  gap: 1px;
+  padding: 3px;
   border: 1px solid var(--line);
-  border-radius: var(--radius);
+  border-radius: 8px;
   background: var(--surface);
+  box-shadow: var(--shadow-overlay);
   opacity: 0;
   pointer-events: none;
   transform: translateY(2px);
   transition: opacity var(--dur-fast) var(--ease), transform var(--dur-fast) var(--ease);
+  z-index: 3;
+}
+
+.msg__toolbar-divider {
+  width: 1px;
+  height: 18px;
+  margin: 0 2px;
+  background: var(--line);
 }
 
 .msg:hover .msg__toolbar,
@@ -958,9 +1055,15 @@ body.app {
   border: 1px solid var(--line);
   border-radius: var(--radius-pill);
   background: var(--surface);
-  font-size: 12px;
+  font-family: var(--font-emoji), "Noto Emoji", sans-serif;
+  font-size: 13px;
   color: var(--ink-2);
   font-variant-numeric: tabular-nums;
+}
+
+.reaction span:last-child {
+  font-family: var(--font-ui);
+  font-size: 12px;
 }
 
 .reaction:hover {
@@ -975,9 +1078,10 @@ body.app {
 }
 
 .reaction-picker {
-  display: flex;
-  gap: 2px;
-  padding: 4px;
+  display: grid;
+  gap: 6px;
+  width: min(340px, calc(100vw - 48px));
+  padding: 8px;
   border: 1px solid var(--line);
   border-radius: var(--radius);
   background: var(--surface);
@@ -988,18 +1092,133 @@ body.app {
   z-index: 5;
 }
 
-.reaction-picker button {
-  width: 30px;
-  height: 30px;
+.reaction-picker__custom {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--line);
+}
+
+.reaction-picker__grid {
+  max-height: 208px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.reaction-picker__label {
+  margin: 6px 0 2px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.reaction-picker__row {
+  display: grid;
+  grid-template-columns: repeat(10, 1fr);
+  gap: 1px;
+}
+
+.reaction-picker__emoji {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
   border: 0;
   border-radius: var(--radius-sm);
   background: transparent;
-  font-size: 16px;
+  font-family: var(--font-emoji), "Noto Emoji", sans-serif;
+  font-size: 19px;
   line-height: 1;
 }
 
-.reaction-picker button:hover {
+.reaction-picker__emoji:hover {
   background: var(--surface-2);
+}
+
+.reaction-picker__emoji--img img {
+  width: 22px;
+  height: 22px;
+  object-fit: contain;
+}
+
+.reaction-picker__any {
+  display: flex;
+  gap: 6px;
+  padding-top: 6px;
+  border-top: 1px solid var(--line);
+}
+
+.reaction-picker__input {
+  flex: 1;
+  min-width: 0;
+  height: 30px;
+  padding: 0 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--paper);
+  font-size: var(--text-xs);
+  color: var(--ink);
+}
+
+.reaction__img {
+  width: 17px;
+  height: 17px;
+  object-fit: contain;
+  display: block;
+}
+
+.reaction__gone {
+  opacity: 0.6;
+}
+
+/* custom emoji manager */
+.emoji-manage {
+  display: grid;
+  gap: 6px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.emoji-manage__item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.emoji-manage__item:last-child {
+  border-bottom: 0;
+}
+
+.emoji-manage__img {
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
+}
+
+.emoji-manage__name {
+  font-size: var(--text-sm);
+  color: var(--ink-2);
+}
+
+.emoji-manage__empty {
+  font-size: var(--text-sm);
+  color: var(--muted);
+}
+
+.emoji-add {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.emoji-add .input {
+  width: 120px;
 }
 
 /* link previews */
@@ -1192,6 +1411,12 @@ body.app {
   line-height: 1.5;
   resize: none;
   outline: none;
+  scrollbar-width: none;
+}
+
+.composer__input::-webkit-scrollbar {
+  width: 0;
+  height: 0;
 }
 
 .composer__input::placeholder {
@@ -1303,6 +1528,9 @@ body.app {
 
 .person__action {
   opacity: 0;
+  display: flex;
+  gap: 2px;
+  flex: none;
 }
 
 .person:hover .person__action,
@@ -1452,6 +1680,18 @@ body.app {
 .settings-section:last-child {
   border-bottom: 0;
   padding-bottom: 0;
+}
+
+.avatar-settings {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.avatar-settings__actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 .settings-section h3 {
@@ -1841,4 +2081,92 @@ body.app {
   .msg__toolbar {
     transition: none;
   }
+}
+
+/* ------------------------------------------------------------------- pinned */
+.pinned-list {
+  display: grid;
+  gap: 14px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.pinned-item {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr) 28px;
+  gap: 12px;
+  align-items: start;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--line);
+}
+
+.pinned-item:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
+.pinned-item__head {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.pinned-item__name {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.pinned-item__time {
+  font-size: var(--text-xs);
+  color: var(--muted);
+}
+
+.pinned-item__text {
+  margin: 4px 0 0;
+  font-size: var(--text-sm);
+  line-height: 1.5;
+  color: var(--ink-2);
+  overflow-wrap: anywhere;
+}
+
+/* --------------------------------------------------------------------- badges */
+.badge-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.badge-choice {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--ink-2);
+}
+
+.badge-choice:hover {
+  border-color: var(--line-strong);
+}
+
+.badge-choice[aria-pressed="true"] {
+  border-color: var(--accent);
+  background: var(--accent-wash);
+  color: var(--accent-ink);
+}
+
+.badge-form {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.badge-form .input {
+  width: 88px;
+  text-transform: uppercase;
 }

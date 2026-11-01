@@ -1,7 +1,6 @@
 import {
   api,
   applyTheme,
-  avatarStyle,
   bootstrap,
   copyText,
   currentRoom,
@@ -24,11 +23,15 @@ import {
   openDialog,
   paintInvite,
   removeMessageNode,
+  renderAvatarSettings,
   renderColorGrid,
   renderConnection,
+  renderBadgeSettings,
+  renderEmojiManager,
   renderHeader,
   renderMe,
   renderPeoplePanel,
+  renderPinnedList,
   renderReactionPicker,
   renderRoomList,
   renderThread,
@@ -119,6 +122,29 @@ function bind() {
     }
   });
   byId("settings-leave").addEventListener("click", leaveDevice);
+  byId("settings-avatar-pick").addEventListener("click", () => byId("settings-avatar-input").click());
+  byId("settings-avatar-input").addEventListener("change", onAvatarChosen);
+  byId("settings-avatar-remove").addEventListener("click", removeAvatar);
+  byId("settings-badge-save").addEventListener("click", saveBadge);
+  byId("settings-badge-clear").addEventListener("click", clearBadge);
+  byId("badge-icons").addEventListener("click", (event) => {
+    const button = event.target.closest("[data-badge-icon]");
+    if (!button) return;
+    byId("badge-icons").querySelectorAll("[data-badge-icon]").forEach((node) => {
+      node.setAttribute("aria-pressed", String(node === button));
+    });
+  });
+  byId("pinned-btn").addEventListener("click", openPinned);
+  byId("emoji-pick").addEventListener("click", () => byId("emoji-file").click());
+  byId("emoji-file").addEventListener("change", () => {
+    const file = byId("emoji-file").files && byId("emoji-file").files[0];
+    byId("emoji-file-label").textContent = file ? file.name : "PNG, JPEG, GIF, or WebP up to 512 KB.";
+  });
+  byId("emoji-add").addEventListener("click", addCustomEmoji);
+  byId("new-room-btn").addEventListener("click", openNewRoomDialog);
+  document.addEventListener("hosttalk:react", (event) => {
+    toggleReaction(event.detail.id, event.detail.emoji);
+  });
   document.querySelectorAll("[data-theme-choice]").forEach((button) => {
     button.addEventListener("click", () => {
       setTheme(button.dataset.themeChoice);
@@ -134,11 +160,6 @@ function bind() {
 
   byId("search-btn").addEventListener("click", openSearch);
   byId("search-input").addEventListener("input", debounce(runSearch, 320));
-  byId("new-room-btn").addEventListener("click", () => {
-    byId("new-room-error").dataset.visible = "false";
-    openDialog("new-room-dialog");
-    setTimeout(() => byId("new-room-name").focus(), 30);
-  });
   byId("new-room-create").addEventListener("click", createRoom);
   byId("join-code-btn").addEventListener("click", () => joinCode(byId("join-code").value.trim()));
 
@@ -157,6 +178,7 @@ function bind() {
   });
   byId("password-form").addEventListener("submit", onPasswordSubmit);
 
+  document.addEventListener("error", onImageError, true);
   document.addEventListener("click", onDocumentClick);
   document.addEventListener("keydown", onGlobalKey);
   window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => {
@@ -187,6 +209,10 @@ async function refreshStatus() {
     state.bootstrap.online = server.online || 0;
     state.bootstrap.room_name = server.room_name || state.bootstrap.room_name;
     state.gifReady = Boolean(server.gifs_ready);
+    for (const key of ["notice_text", "read_only", "slow_mode_seconds", "room_locked"]) {
+      if (key in server) state.bootstrap[key] = server[key];
+    }
+    renderBanner();
     if (!state.me) paintJoin();
   } catch (error) {
     /* The join screen still works without status details. */
@@ -254,11 +280,6 @@ async function onJoinSubmit(event) {
   const password = byId("join-password").value;
   const button = byId("join-submit");
   showFormError("join-error", "");
-  if (!name) {
-    showFormError("join-error", "Enter a name first.");
-    byId("join-name").focus();
-    return;
-  }
   button.disabled = true;
   button.textContent = "Joining";
   try {
@@ -298,6 +319,7 @@ function enterApp(data) {
   state.people = data.people || [];
   state.palette = data.palette || state.bootstrap.palette || [];
   state.reactions = data.reactions || [];
+  state.emoji = data.emoji || state.emoji || [];
   state.gifReady = Boolean(data.server && data.server.gifs_ready);
   state.activeRoomId = state.activeRoomId || "main";
   if (!state.rooms.some((room) => room.id === state.activeRoomId)) {
@@ -311,6 +333,7 @@ function enterApp(data) {
   renderRoomList();
   renderPeoplePanel();
   renderHeader();
+  renderBanner();
   connectEvents();
   loadRoom(state.activeRoomId, { initial: true });
   const composer = byId("composer-input");
@@ -388,9 +411,30 @@ function connectEvents() {
     if (state.me && data.user_id === state.me.id && data.user) {
       state.me = { ...state.me, ...data.user };
       renderMe();
+      renderAvatarSettings();
+    }
+    if (data.user) {
+      // Messages carry a copy of the author card. Refresh the ones on screen.
+      for (const list of state.messages.values()) {
+        for (const message of list) {
+          if (message.user_id !== data.user_id) continue;
+          message.avatar_url = data.user.avatar_url;
+          message.role = data.user.role;
+          message.color = data.user.color;
+          message.badge_icon = data.user.badge_icon;
+          message.badge_text = data.user.badge_text;
+        }
+      }
+      renderThread({ stick: false });
     }
     renderPeoplePanel();
     renderHeader();
+  });
+  eventSource.addEventListener("emoji.changed", (event) => {
+    const data = JSON.parse(event.data);
+    state.emoji = data.emoji || [];
+    renderEmojiManager();
+    renderThread({ stick: false });
   });
   eventSource.addEventListener("room.created", () => refreshRooms());
   eventSource.addEventListener("room.member_joined", () => refreshRooms());
@@ -412,6 +456,10 @@ function connectEvents() {
   });
   eventSource.addEventListener("server.updated", (event) => {
     const data = JSON.parse(event.data);
+    if (data.rules) {
+      Object.assign(state.bootstrap, data.rules);
+      renderBanner();
+    }
     if (data.room_name) {
       state.bootstrap.room_name = data.room_name;
       const room = state.rooms.find((entry) => entry.id === "main");
@@ -490,6 +538,19 @@ function markRead(roomId) {
   updateTitle();
 }
 
+function renderBanner() {
+  const banner = byId("thread-banner");
+  if (!banner) return;
+  const notice = String(state.bootstrap.notice_text || "").trim();
+  const slow = Number(state.bootstrap.slow_mode_seconds || 0);
+  let text = "";
+  if (notice) text = notice;
+  else if (state.bootstrap.read_only) text = "Read only. Only the host and moderators write here.";
+  else if (slow > 0) text = `Slow mode: one message every ${slow} second${slow === 1 ? "" : "s"}.`;
+  banner.textContent = text;
+  banner.hidden = !text;
+}
+
 function updateTitle() {
   const room = currentRoom();
   const unread = [...state.unread.values()].reduce((sum, value) => sum + value, 0);
@@ -551,6 +612,8 @@ async function loadMembers(roomId) {
 }
 
 async function ensureRoomAccess(room) {
+  if (room.kind === "main") return true;
+  if (!room.joined) return enterVisibleRoom(room);
   if (room.kind !== "dm" || !room.has_password || state.unlocked.has(room.id)) return true;
   return new Promise((resolve) => {
     askPassword({
@@ -560,6 +623,40 @@ async function ensureRoomAccess(room) {
       onSubmit: async (value) => {
         await api.post(`/api/rooms/${room.id}/verify`, { password: value });
         state.unlocked.add(room.id);
+        resolve(true);
+        return true;
+      },
+      onCancel: () => resolve(false),
+    });
+  });
+}
+
+async function enterVisibleRoom(room) {
+  const join = async (password) => {
+    const data = await api.post(`/api/rooms/${room.id}/enter`, { password: password || "" });
+    Object.assign(room, data.room || {});
+    room.joined = true;
+    state.messages.set(room.id, data.messages || []);
+    state.unlocked.add(room.id);
+    renderRoomList();
+    return true;
+  };
+  if (!room.has_password) {
+    try {
+      await join("");
+      return true;
+    } catch (error) {
+      toast(error.message, "error");
+      return false;
+    }
+  }
+  return new Promise((resolve) => {
+    askPassword({
+      title: `Join ${room.name}`,
+      sub: "This room has its own password.",
+      submit: "Enter room",
+      onSubmit: async (value) => {
+        await join(value);
         resolve(true);
         return true;
       },
@@ -591,8 +688,26 @@ function switchRoom(roomId) {
   loadRoom(roomId);
 }
 
+function openNewRoomDialog() {
+  const select = byId("new-room-parent");
+  const rooms = state.rooms.filter((room) => room.kind !== "dm" && room.joined);
+  select.innerHTML =
+    '<option value="">Top level</option>' +
+    rooms
+      .map((room) => `<option value="${room.id}">${escapeHtml(room.name)}</option>`)
+      .join("");
+  select.value = state.activeRoomId === "main" ? "" : state.activeRoomId;
+  byId("new-room-password").value = "";
+  byId("new-room-name").value = "";
+  showFormError("new-room-error", "");
+  openDialog("new-room-dialog");
+  setTimeout(() => byId("new-room-name").focus(), 30);
+}
+
 async function createRoom() {
   const name = byId("new-room-name").value.trim();
+  const parentId = byId("new-room-parent").value;
+  const password = byId("new-room-password").value;
   const button = byId("new-room-create");
   showFormError("new-room-error", "");
   if (!name) {
@@ -601,7 +716,7 @@ async function createRoom() {
   }
   button.disabled = true;
   try {
-    const data = await api.post("/api/rooms", { name });
+    const data = await api.post("/api/rooms", { name, parent_id: parentId, password });
     state.rooms.push(data.room);
     state.messages.set(data.room.id, []);
     byId("new-room-name").value = "";
@@ -614,6 +729,51 @@ async function createRoom() {
   } finally {
     button.disabled = false;
   }
+}
+
+async function addCustomEmoji() {
+  const name = byId("emoji-name").value.trim();
+  const file = byId("emoji-file").files && byId("emoji-file").files[0];
+  showFormError("emoji-error", "");
+  if (!name || !file) {
+    showFormError("emoji-error", "Add a name and a picture.");
+    return;
+  }
+  const body = new FormData();
+  body.append("name", name);
+  body.append("file", file, file.name || "emoji.png");
+  try {
+    const data = await api.post("/api/emoji", body);
+    state.emoji = data.all || state.emoji;
+    byId("emoji-name").value = "";
+    byId("emoji-file").value = "";
+    byId("emoji-file-label").textContent = "PNG, JPEG, GIF, or WebP up to 512 KB.";
+    renderEmojiManager();
+    toast(`Added :${name}:`);
+  } catch (error) {
+    showFormError("emoji-error", error.message);
+  }
+}
+
+async function deleteCustomEmoji(emojiId) {
+  const item = (state.emoji || []).find((entry) => entry.id === emojiId);
+  if (!item) return;
+  askConfirm({
+    title: `Remove :${item.name}:?`,
+    body: "Reactions that used it disappear from messages.",
+    confirmLabel: "Remove emoji",
+    onConfirm: async () => {
+      try {
+        const data = await api.delete(`/api/emoji/${emojiId}`);
+        state.emoji = data.all || [];
+        renderEmojiManager();
+        renderThread({ stick: false });
+        toast("Emoji removed");
+      } catch (error) {
+        toast(error.message, "error");
+      }
+    },
+  });
 }
 
 async function joinCode(code) {
@@ -1043,6 +1203,9 @@ function openSettings() {
   if (!state.me) return;
   syncSettingsControls();
   renderMe();
+  renderAvatarSettings();
+  renderBadgeSettings();
+  renderEmojiManager();
   showFormError("settings-name-error", "");
   showFormError("settings-color-error", "");
   openDialog("settings-dialog");
@@ -1058,6 +1221,98 @@ function syncSettingsControls() {
       String((button.dataset.soundsChoice === "on") === Boolean(state.prefs.sounds))
     );
   });
+}
+
+async function onAvatarChosen(event) {
+  const input = event.target;
+  const file = input.files && input.files[0];
+  input.value = "";
+  if (!file || !state.me) return;
+  const button = byId("settings-avatar-pick");
+  button.disabled = true;
+  button.textContent = "Saving";
+  try {
+    const body = new FormData();
+    body.append("avatar", file, file.name || "picture.png");
+    const data = await api.post("/api/me/avatar", body);
+    state.me = data.user;
+    renderMe();
+    renderAvatarSettings();
+    renderPeoplePanel();
+    renderThread({ stick: false });
+    toast("Profile picture saved");
+  } catch (error) {
+    toast(error.message, "error");
+  } finally {
+    button.disabled = false;
+    button.textContent = "Change picture";
+  }
+}
+
+async function removeAvatar() {
+  if (!state.me || !state.me.avatar_url) return;
+  try {
+    const data = await api.delete("/api/me/avatar");
+    state.me = data.user;
+    renderMe();
+    renderAvatarSettings();
+    renderPeoplePanel();
+    renderThread({ stick: false });
+    toast("Profile picture removed");
+  } catch (error) {
+    toast(error.message, "error");
+  }
+}
+
+function onImageError(event) {
+  const image = event.target;
+  if (!(image instanceof HTMLImageElement) || !image.classList.contains("avatar--img")) return;
+  const span = document.createElement("span");
+  span.className = image.className.replace("avatar--img", "").trim();
+  span.textContent = image.dataset.initials || "?";
+  span.style.background = image.dataset.color || "#34527A";
+  span.setAttribute("aria-hidden", "true");
+  image.replaceWith(span);
+}
+
+function chosenBadgeIcon() {
+  const selected = byId("badge-icons").querySelector('[data-badge-icon][aria-pressed="true"]');
+  return selected ? selected.dataset.badgeIcon : "";
+}
+
+async function saveBadge() {
+  const icon = chosenBadgeIcon();
+  const text = byId("settings-badge-text").value.trim();
+  showFormError("settings-badge-error", "");
+  if (!icon || !text) {
+    showFormError("settings-badge-error", "Pick an icon and type up to four characters.");
+    return;
+  }
+  try {
+    const data = await api.patch("/api/me", { badge_icon: icon, badge_text: text });
+    state.me = data.user;
+    renderBadgeSettings();
+    renderMe();
+    renderThread({ stick: false });
+    renderPeoplePanel();
+    toast("Badge saved");
+  } catch (error) {
+    showFormError("settings-badge-error", error.message);
+  }
+}
+
+async function clearBadge() {
+  try {
+    const data = await api.patch("/api/me", { badge_icon: "", badge_text: "" });
+    state.me = data.user;
+    renderBadgeSettings();
+    renderMe();
+    renderThread({ stick: false });
+    renderPeoplePanel();
+    toast("Badge cleared");
+  } catch (error) {
+    showFormError("settings-badge-error", error.message);
+  }
 }
 
 async function saveName() {
@@ -1268,6 +1523,47 @@ function deleteMessage(messageId) {
   });
 }
 
+async function togglePin(messageId, pinned) {
+  try {
+    const data = await api.post(`/api/messages/${messageId}/pin`, { pinned });
+    const message = findMessage(messageId);
+    if (message) {
+      applyMessageUpdate(data.message);
+    }
+    toast(pinned ? "Pinned to the room" : "Unpinned");
+    const dialog = byId("pinned-dialog");
+    if (dialog && dialog.open) openPinned();
+  } catch (error) {
+    toast(error.message, "error");
+  }
+}
+
+async function changeRole(userId, role) {
+  if (!userId || !role) return;
+  try {
+    const data = await api.post(`/api/people/${userId}/role`, { role });
+    const person = state.people.find((entry) => entry.id === userId);
+    if (person && data.user) Object.assign(person, data.user);
+    renderPeoplePanel();
+    renderThread({ stick: false });
+    toast(role === "moderator" ? "Moderator added" : "Moderator removed");
+  } catch (error) {
+    toast(error.message, "error");
+  }
+}
+
+async function openPinned() {
+  const list = byId("pinned-list");
+  if (list) list.innerHTML = '<li class="empty"><span class="empty__title">Loading</span></li>';
+  openDialog("pinned-dialog");
+  try {
+    const data = await api.get(`/api/rooms/${state.activeRoomId}/pinned`);
+    renderPinnedList(data.messages || []);
+  } catch (error) {
+    if (list) list.innerHTML = `<li class="empty"><span class="empty__title">${escapeHtml(error.message)}</span></li>`;
+  }
+}
+
 async function toggleReaction(messageId, emoji) {
   document.querySelectorAll(".reaction-picker").forEach((node) => node.remove());
   try {
@@ -1293,7 +1589,9 @@ function openLightbox(url) {
 function onDocumentClick(event) {
   const target = event.target.closest("[data-action]");
   if (!target) {
-    document.querySelectorAll(".reaction-picker").forEach((node) => node.remove());
+    if (!event.target.closest(".reaction-picker")) {
+      document.querySelectorAll(".reaction-picker").forEach((node) => node.remove());
+    }
     return;
   }
   const action = target.dataset.action;
@@ -1302,6 +1600,9 @@ function onDocumentClick(event) {
   else if (action === "reply") startReply(target.dataset.id);
   else if (action === "react") renderReactionPicker(target);
   else if (action === "react-one") toggleReaction(target.dataset.id, target.dataset.emoji);
+  else if (action === "pin") togglePin(target.dataset.id, target.dataset.pinned !== "true");
+  else if (action === "role") changeRole(target.dataset.user, target.dataset.role);
+  else if (action === "delete-emoji") deleteCustomEmoji(target.dataset.id);
   else if (action === "edit") startEdit(target.dataset.id);
   else if (action === "delete") deleteMessage(target.dataset.id);
   else if (action === "lightbox") openLightbox(target.dataset.url);
@@ -1399,7 +1700,68 @@ function showThreadSkeleton() {
     </div>`;
 }
 
+let sentAudio = null;
+let audioContext = null;
+
+function audio() {
+  if (!audioContext) {
+    const Factory = window.AudioContext || window.webkitAudioContext;
+    if (!Factory) return null;
+    audioContext = new Factory();
+  }
+  if (audioContext.state === "suspended") audioContext.resume().catch(() => {});
+  return audioContext;
+}
+
+/**
+ * The sent tone. A short rising swoosh with a soft pop under it,
+ * built here so the file carries no licensed audio.
+ */
+function playSent() {
+  const ctx = audio();
+  if (!ctx) return;
+  try {
+    const now = ctx.currentTime;
+    const duration = 0.26;
+    const buffer = ctx.createBuffer(1, Math.floor(ctx.sampleRate * duration), ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let index = 0; index < data.length; index += 1) {
+      data[index] = Math.random() * 2 - 1;
+    }
+    const source = ctx.createBufferSource();
+    source.buffer = buffer;
+    const band = ctx.createBiquadFilter();
+    band.type = "bandpass";
+    band.Q.value = 1.2;
+    band.frequency.setValueAtTime(850, now);
+    band.frequency.exponentialRampToValueAtTime(2400, now + 0.1);
+    band.frequency.exponentialRampToValueAtTime(720, now + duration);
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0.0001, now);
+    gain.gain.exponentialRampToValueAtTime(0.11, now + 0.05);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+    source.connect(band).connect(gain).connect(ctx.destination);
+    source.start(now);
+    source.stop(now + duration);
+
+    const pop = ctx.createOscillator();
+    pop.type = "sine";
+    pop.frequency.setValueAtTime(430, now);
+    pop.frequency.exponentialRampToValueAtTime(190, now + 0.12);
+    const popGain = ctx.createGain();
+    popGain.gain.setValueAtTime(0.045, now);
+    popGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.14);
+    pop.connect(popGain).connect(ctx.destination);
+    pop.start(now);
+    pop.stop(now + 0.15);
+  } catch (error) {
+    /* Audio is optional. */
+  }
+}
+
 function playReceived() {
+  if (sentAudio) sentAudio.volume = 0.28;
+
   try {
     if (!receivedAudio) {
       receivedAudio = new Audio("/static/recieved.mp3");
