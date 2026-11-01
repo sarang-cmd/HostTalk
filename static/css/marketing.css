@@ -23,6 +23,11 @@
   align-items: center;
   gap: clamp(12px, 2vw, 24px);
   font-size: var(--text-sm);
+  min-width: 0;
+}
+
+.site-nav a {
+  white-space: nowrap;
 }
 
 .site-nav a {
@@ -590,6 +595,12 @@
   }
 
   .site-nav a[href="/console"] {
+    display: none;
+  }
+
+  /* A static page carries its sections in the body. Drop the in page
+     links on a narrow screen and keep the two that leave the page. */
+  .site-nav a[href^="#"] {
     display: none;
   }
 }

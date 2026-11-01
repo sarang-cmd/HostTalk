@@ -2,7 +2,7 @@
 
 A chat room for one local network. One machine runs the server. Everyone else opens a browser and joins with a name and the room password.
 
-Version 2.0.0, codename Roomtone. Apache 2.0.
+Version 2.1.0, codename Roomtone. Apache 2.0.
 
 ![The room at laptop width](static/screenshots/room-desktop.png)
 
@@ -13,6 +13,7 @@ Messages live in a SQLite file on the host machine. They move between the browse
 - [What this build adds](#what-this-build-adds)
 - [Screens](#screens)
 - [Project stats](#project-stats)
+- [Project page](#project-page)
 - [How it works](#how-it-works)
 - [Run it](#run-it)
 - [Set up the room](#set-up-the-room)
@@ -34,7 +35,7 @@ The 1.x build shipped one room, a five character password check, and a page with
 
 - **Group rooms.** Named rooms hold 20 people by default. The host sets the cap. A full room refuses new members with a clear message.
 - **Direct threads.** Two people open a private thread from the people panel. The thread appears in the sidebar for both.
-- **DM passwords.** A member sets a password on a direct thread. The other side types it once and the browser remembers the unlock for the session.
+- **DM passwords.** A member sets a password on a direct thread. The other side types it once and the browser remembers the pass for the session.
 - **Invite links.** Each room issues a code with a use limit and a 7 day expiry. The link opens the join page with the code filled in.
 - **Unique colors.** The server hands out a color from a 20 step palette. Every entry meets a 4.5 to 1 contrast ratio against white text, so names stay readable.
 - **Nickname change.** A person renames in the settings sheet. The server enforces a one hour cooldown and writes each change to a log the host reads in the console.
@@ -67,6 +68,12 @@ The 1.x build shipped one room, a five character password check, and a page with
 
 - **LocalSend interop.** The server announces itself over multicast on UDP 53317 and answers the LocalSend v2 protocol. Files a phone sends land in the main room. The console lists devices seen on the network.
 - **Doctor command.** `python -m hosttalk doctor` checks the port, the data folder, free space, the network address, and the GIF key before you invite anyone.
+
+### Pages
+
+- **A front page.** `/` shows live counts, the room address, and one button into the room. Server rendered, no script.
+- **A project stats page.** `/stats` counts this instance, the code in the build, and the versions under both.
+- **A static project page.** `index.html` at the repository root explains the project for a reader who has not started the server yet.
 
 ## Screens
 
@@ -121,6 +128,16 @@ Three tables, counted when the page loads:
 Figures come from two places. `store.stats()` reads rows. A walk of the install folder counts lines, files, and test functions. Nothing leaves the machine, and the page keeps no record of visitors. Message text, names, and addresses do not appear.
 
 Source counts are cached for the life of the process. Instance figures are read on each request. If the database does not answer, the page still renders the code and build tables, and marks the instance table as missing. The code lives in `hosttalk/stats.py`, the markup in `templates/stats.html`.
+
+## Project page
+
+![The static project page](static/screenshots/project-page.png)
+
+`index.html` at the repository root is a static page about the project. It carries the same styles as the app, loads no script, and uses relative paths. Open the file from a checkout, or publish the repository root with GitHub Pages. It is not served by Flask, so a running room never depends on it.
+
+The page covers the product shot, eight features, the three steps a message takes, the two commands to start the server, the stats page, the limits, and the phone and console shots. Every download link points at the latest release.
+
+A test reads the file and checks that every local reference resolves. That catches a broken stylesheet path and a missing screenshot before a publish.
 
 ## How it works
 
@@ -437,6 +454,7 @@ templates/          landing, room, stats, console, about, terms, privacy, error
 deploy/             systemd, launchd, Docker, proxies
 tests/              pytest suite
 docs/               notes on screenshots and the upgrade
+index.html          static landing page for the project, not served by the app
 ```
 
 ## Credits
