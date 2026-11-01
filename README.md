@@ -372,6 +372,7 @@ What this build does:
 - link previews refuse loopback, link local, and private addresses
 - uploads capped by bytes during the stream, not after
 - config file written atomically with mode 0600
+- the stats page exposes counts and versions only, never message text or names
 
 What it does not do:
 
