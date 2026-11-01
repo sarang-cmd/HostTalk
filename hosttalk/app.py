@@ -18,8 +18,8 @@ from flask import (
     send_from_directory,
 )
 
-from . import api_chat, api_files, api_host, api_session
-from .auth import COLOR_GRID
+from . import api_chat, api_emoji, api_files, api_host, api_session
+from .auth import BADGE_ICONS, COLOR_GRID
 from .config import project_root
 from .netinfo import is_loopback, network_summary
 from .services import Services
@@ -73,7 +73,7 @@ def create_app(services: Services) -> Flask:
             response.headers.setdefault("Cache-Control", "no-store")
         return response
 
-    for blueprint in (api_session.bp, api_chat.bp, api_files.bp, api_host.bp):
+    for blueprint in (api_session.bp, api_chat.bp, api_files.bp, api_emoji.bp, api_host.bp):
         app.register_blueprint(blueprint)
 
     app.add_template_filter(human_bytes, "filesize")
@@ -85,7 +85,9 @@ def create_app(services: Services) -> Flask:
             "version": __version__,
             "room_name": config.room_name,
             "palette": COLOR_GRID,
+            "badge_icons": list(BADGE_ICONS),
             "theme": config.values["default_theme"],
+            "host_user": config.host_user,
             "static_v": __version__,
         }
 
@@ -123,11 +125,16 @@ def create_app(services: Services) -> Flask:
             "port": config.port,
             "max_upload_mb": int(config.values["max_upload_mb"]),
             "palette": COLOR_GRID,
+            "badge_icons": list(BADGE_ICONS),
             "theme": config.values["default_theme"],
             "gifs_ready": bool(config.klipy_key),
             "previews_enabled": config.previews_enabled,
             "localsend_enabled": bool(config.localsend.get("enabled")),
             "max_room_members": config.max_room_members,
+            "notice_text": config.values.get("notice_text") or "",
+            "read_only": bool(config.values.get("read_only")),
+            "slow_mode_seconds": int(config.values.get("slow_mode_seconds") or 0),
+            "room_locked": bool(config.values.get("room_locked")),
             "join_code": request.args.get("join", ""),
         }
         return render_template(
