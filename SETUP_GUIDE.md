@@ -1,246 +1,214 @@
-# HostTalk Setup Guide
+# HostTalk setup guide
 
-## Overview
+A step by step path from a fresh checkout to a room people use. The README covers the design. This file covers the keystrokes.
 
-HostTalk is a self-hosted, local-network messaging application with modern features including direct messages, file sharing, GIFs, link previews, and LocalSend integration.
+## Before you start
 
-## Requirements
+- Python 3.10 or newer on the host machine. Check with `python3 --version`.
+- The host and the guests on the same network. A guest Wi-Fi with client isolation blocks the room.
+- Port 7284 free, or a different port you pick now.
+- No internet needed after the first install.
 
-- Python 3.8+
-- pip (Python package manager)
-
-## Installation
-
-### 1. Clone/Download the Repository
+## 1. Get the code
 
 ```bash
+git clone https://github.com/sarang-cmd/HostTalk
 cd HostTalk
 ```
 
-### 2. Install Dependencies
+On Windows, use Git for Windows or download the zip and unpack it.
+
+## 2. Create a virtualenv
+
+Linux and macOS:
 
 ```bash
-pip install -r requirements.txt
+python3 -m venv .venv
+.venv/bin/pip install -r requirements.txt
 ```
 
-### 3. Configure Environment Variables
+Windows PowerShell:
 
-Create a `.env` file in the project root (already included):
-
-```env
-# HostTalk Environment Variables
-SERVER_PASSWORD=your_secure_password
-
-# Optional: GIPHY API Key for GIF search (get from https://developers.giphy.com/)
-GIPHY_API_KEY=your_api_key
-
-# Logging
-LOG_LEVEL=INFO
+```powershell
+py -m venv .venv
+.venv\Scripts\python -m pip install -r requirements.txt
 ```
 
-**Important**: Change `SERVER_PASSWORD` to a secure password before running!
+The project uses the virtualenv on purpose. A system Python on recent distributions refuses package installs.
 
-## Running the Server
+## 3. Set the room password
 
-### Development Mode
+Browser path, which also sets the room name and the port:
 
 ```bash
-python server.py
+.venv/bin/python server.py
 ```
 
-The server will start on `http://0.0.0.0:6767/` and automatically open in your browser.
+Open `http://127.0.0.1:7284/console`. The first run shows a setup card. Fill in four fields and press Finish setup.
 
-### Production Mode
+Terminal path, when the machine has no desktop:
 
-For production, consider using a process manager like `systemd` (Linux) or running as a Windows service.
-
-## Accessing from Other Devices
-
-1. Ensure all devices are on the **same WiFi network**
-2. Find the server's LAN IP (shown in console on startup)
-3. Other devices connect to: `http://<SERVER_IP>:6767/`
-4. Enter the server password when prompted
-
-## Features Overview
-
-### 🔐 Password-Protected Hosting
-- Server-wide password required to join
-- Changeable via UI (Settings → Change Password) or `.env` file
-- Bcrypt-hashed for security
-
-### 💬 Direct Messages (DMs)
-- Click any user in the user list (right sidebar) to start a DM
-- Right-click user → "Open DM" or "Create DM Link"
-- Password-protect DMs: Right-click user → "Set DM Password"
-- DM links: Right-click user → "Create DM Link" → share the link
-
-### 📁 File Sharing
-- Click the **paperclip icon** next to the message input
-- Select any file (images, PDFs, documents, archives)
-- Files >20MB are **auto-compressed**:
-  - Images: Quality reduced automatically
-  - Other files: Gzip compressed
-- Download files by clicking the download link in chat
-
-### 🎨 User Colors
-- Open Settings (⋮ button) → "Your Color" section
-- Click any color from the 20-color grid
-- Or use the custom color picker + "Use Custom"
-- Colors are unique per user (no duplicates)
-
-### ↩️ Quoting Replies
-- Hover any message → click "↩️ Reply"
-- Type your reply → press Enter
-- Quoted message appears above your reply
-
-### 🔗 Link Previews
-- Paste any URL in chat
-- Automatic OpenGraph preview (title, description, image)
-- Works for YouTube, GitHub, news sites, etc.
-
-### 🎭 GIFs & Stickers
-- Settings → "Stickers & GIFs"
-- Search GIFs (powered by GIPHY)
-- Click to send instantly
-
-### 📋 Nickname Changes
-- Settings → "Profile" → enter new nickname → "Change"
-- 1-hour cooldown between changes
-- Host can view full history: Settings → "View Nickname History"
-
-### 📊 Server Logs (Host Only)
-- Settings → "View Server Logs"
-- Structured logging with timestamps
-- Log file: `%APPDATA%/HostTalk/hosttalk.log`
-
-### 📡 LocalSend Integration (LAN File Transfer)
-- Settings → "LocalSend" → "Scan for Devices"
-- Discovers other LocalSend-compatible devices on LAN
-- Click "Connect" next to a device
-- Use "Send File via LocalSend" to transfer files directly
-- Implements LocalSend v2 REST API
-
-## Configuration
-
-### Change Server Password
-
-**Via UI** (Host only):
-1. Settings → "Change Password"
-2. Enter old and new password
-
-**Via .env file**:
-```env
-SERVER_PASSWORD=new_secure_password
+```bash
+.venv/bin/python -m hosttalk setup \
+  --password "the room password" \
+  --room "Front room" \
+  --port 7284 \
+  --non-interactive
 ```
 
-### GIPHY API Key (Optional)
+Both paths write `config.json` into the data folder with mode 0600. The password is stored as a bcrypt hash.
 
-For better GIF search, add your API key:
-```env
-GIPHY_API_KEY=your_giphy_api_key
-```
-Get a free key at: https://developers.giphy.com/
+## 4. Start the server
 
-### Port Configuration
-
-Default port: **6767**
-
-To change, edit `server.py`:
-```python
-s.run(app, host="0.0.0.0", port=YOUR_PORT, debug=False)
+```bash
+.venv/bin/python server.py
 ```
 
-## Network Requirements
+The banner prints three addresses:
 
-- **Port 6767** (TCP) - Main chat server
-- **Port 53317** (UDP) - LocalSend multicast discovery
-- All devices must be on same subnet/LAN
+- `http://127.0.0.1:7284` for this machine
+- `http://192.168.x.x:7284` for the network
+- `http://192.168.x.x:7284/console` for the host console
 
-## Troubleshooting
+Keep the terminal open, or use one of the service options below.
 
-### "Failed to fetch data" in Invite popup
-- Server couldn't detect WiFi SSID
-- Ensure running with network permissions
+## 5. Invite the first person
 
-### Can't connect from other devices
-1. Check firewall allows port 6767
-2. Verify same WiFi network
-3. Try `http://<IP>:6767/` (not localhost)
+1. Press Invite in the room.
+2. Copy the address or let the guest scan the QR code.
+3. Give the guest the room password in person or in another channel.
+4. The guest opens the address, types a name and the password, and joins.
 
-### LocalSend not discovering devices
-- Ensure multicast not blocked by router
-- Try HTTP discovery fallback (auto-enabled)
-- Check devices run LocalSend or HostTalk
+The console shows the new person under People within a second.
 
-### GIFs not loading
-- Check internet connection (GIPHY API)
-- Add GIPHY_API_KEY to .env for higher limits
+## 6. Check the install
 
-## File Structure
-
-```
-HostTalk/
-├── server.py              # Main backend
-├── requirements.txt       # Python dependencies
-├── .env                   # Environment variables
-├── SETUP_GUIDE.md        # This file
-├── IMPLEMENTATION_PLAN.md # Technical docs
-├── static/
-│   ├── chat.js           # Frontend logic
-│   ├── options.js        # Theme/settings
-│   ├── rightclick.js     # Context menus
-│   ├── customization.js  # UI customization
-│   ├── main.css          # Styles
-│   ├── responsive.css    # Mobile styles
-│   ├── lib/
-│   │   ├── compressor.min.js
-│   │   └── fflate.min.js
-│   └── [audio/icon files]
-└── templates/
-    └── index.html        # Main UI template
+```bash
+.venv/bin/python -m hosttalk doctor
 ```
 
-## Data Storage
+Each line answers one question:
 
-- **Messages**: In-memory (last 10 in group chat)
-- **DMs**: In-memory per user pair
-- **Logs**: File-based (`hosttalk.log`)
-- **User preferences**: Browser localStorage
-- **Nickname history**: Server memory (host only)
+```
+[OK  ] Room password: Set
+[OK  ] Data folder: /home/you/.local/share/hosttalk
+[OK  ] Free space: 42.0 GB free
+[OK  ] Server port: Listening on 7284
+[OK  ] Network address: 192.168.1.24 (1 interface)
+[WARN] GIF search: Add a GIPHY key to enable search
+[OK  ] LocalSend: 0 device(s) seen
+```
 
-## Security Notes
+Warnings are fine. Failures need action before you invite people.
 
-- Passwords bcrypt-hashed (never stored plaintext)
-- DM passwords also bcrypt-hashed
-- No persistent message storage by default
-- LocalSend uses HTTP (add HTTPS for production)
-- Server password required for all connections
+## 7. Keep it running
 
-## Customization
+### Linux, systemd
 
-### Themes
-Settings → "Theme" → choose iOS 6, 16, or 26 style
+```bash
+sudo cp -r . /opt/hosttalk
+sudo bash /opt/hosttalk/deploy/install-service.sh
+systemctl status hosttalk
+journalctl -u hosttalk -f
+```
 
-### Dark/Light Mode
-Settings → "Appearence" → Dark/Light
+The helper creates a `hosttalk` system user, a data folder at `/var/lib/hosttalk`, and the unit from `deploy/hosttalk.service`.
 
-### Border Radius
-Settings → "Border radius" slider
+### macOS, launchd
 
-### Placeholder Text
-Settings → "Placeholder" → custom text
+```bash
+sudo mkdir -p /usr/local/hosttalk
+sudo cp -r . /usr/local/hosttalk
+sudo cp deploy/com.hosttalk.room.plist /Library/LaunchDaemons/
+sudo launchctl load /Library/LaunchDaemons/com.hosttalk.room.plist
+```
 
-## License
+The plist points at `/usr/local/hosttalk` and keeps data in `/Users/Shared/HostTalk`.
 
-MIT License - See LICENSE file
+### Windows, startup folder
 
-## Support
+```bat
+deploy\hosttalk.bat --headless
+```
 
-For issues, check:
-1. Console logs (F12 → Console)
-2. Server terminal output
-3. Log file: `%APPDATA%/HostTalk/hosttalk.log`
+Put a shortcut to the batch file in `shell:startup`. The batch file creates the virtualenv on first run.
 
----
+### Docker
 
-*HostTalk v1.0 - Local Network Messaging*
+```bash
+cd deploy
+SERVER_PASSWORD="change-this" docker compose up --build -d
+docker compose logs -f
+```
+
+The compose file uses host networking because LocalSend needs multicast. Without that, discovery lists nothing.
+
+### Behind a proxy
+
+Copy `deploy/Caddyfile` or `deploy/nginx.conf` and point the proxy at `127.0.0.1:7284`. Two settings matter:
+
+- `proxy_buffering off`, so the event stream arrives as it happens
+- a read timeout of an hour or more, so the stream stays open when the room is quiet
+
+HTTPS through a local certificate also gives the browser a secure context, which installs the service worker and the phone shortcut.
+
+## 8. Open the firewall
+
+| Platform | Command |
+| --- | --- |
+| Windows | Allow Python on private networks when the prompt appears |
+| Ubuntu | `sudo ufw allow 7284/tcp` |
+| Fedora | `sudo firewall-cmd --add-port=7284/tcp --permanent` then reload |
+| macOS | Allow incoming connections when the prompt appears |
+
+LocalSend also uses UDP 53317. Open the port when phone transfers matter.
+
+## 9. Change settings later
+
+The console covers every setting. Open `http://127.0.0.1:7284/console` on the host, sign in with the room password, then:
+
+- **Server settings** edits the port, the reach, the files limit, the room cap, the theme default, the log level, the GIPHY key, and the LocalSend identity.
+- **Room password** changes the password. Guests keep their sessions until they leave.
+- **Rooms** clears messages in a room.
+- **People** ends a session.
+- **Logs** filters by level and downloads the file.
+- **Data** exports a room as JSON and stops the server.
+
+A port or reach change needs a restart. The console marks the change until the server comes back.
+
+## 10. Back up and restore
+
+Back up: copy the data folder. That is the whole state.
+
+```bash
+# Linux default
+tar -czf hosttalk-backup.tar.gz -C ~/.local/share hosttalk
+```
+
+Restore: stop the server, replace the folder, start the server.
+
+The database runs in WAL mode. Copy `hosttalk.db-wal` with the main file, or stop the server before copying.
+
+## Common problems
+
+**The address does not answer from a phone.** Check the network name on both devices. Turn off VPNs. Try the numeric address instead of a hostname. Confirm the firewall rule.
+
+**Join fails with a password error.** The password is case sensitive. Reset it with `.venv/bin/python -m hosttalk reset-password` on the host.
+
+**A name is refused.** That name is bound to another device. Pick another name, or remove the row from the People list after the person leaves.
+
+**The console says the host machine only.** `console_local_only` is on. Open `127.0.0.1` on the host, or turn the setting off in the console when you sign in locally.
+
+**LocalSend devices never appear.** Multicast is blocked. Many guest networks and managed switches isolate clients. Use the browser upload instead.
+
+**The port changes did nothing.** The setting saves to the file. The running process keeps its port until a restart. Stop the server and start it again.
+
+**The log file grows.** It rotates at 2 MB with three backups. Lower the log level to WARNING in the console when the room is busy.
+
+## Uninstall
+
+1. Stop the service.
+2. Delete the checkout.
+3. Delete the data folder.
+
+Nothing else is left behind. There is no registry entry, no system package, and no cloud account.
