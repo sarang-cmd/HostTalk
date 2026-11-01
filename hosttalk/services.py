@@ -58,6 +58,8 @@ class Services:
     message_limiter: Any = None
     upload_limiter: Any = None
     typing_limiter: Any = None
+    slow_limiter: Any = None
+    slow_window: int = 0
 
     def shutdown(self) -> None:
         """Stop discovery and close the database. Safe to call twice."""
@@ -72,6 +74,7 @@ class Services:
             "kind": room["kind"],
             "created_at": room["created_at"],
             "created_by": room.get("created_by", ""),
+            "parent_id": room.get("parent_id", ""),
             "member_limit": int(room.get("member_limit", self.config.max_room_members)),
             "members": int(room.get("members", len(members))),
             "has_password": bool(room.get("password_hash")),
@@ -120,7 +123,7 @@ def build_services(config: Config, *, start_localsend: bool = True) -> Services:
         presence=presence,
         broker=broker,
         previews=PreviewCache(),
-        gifs=GifService(config.giphy_key, enabled=bool(config.values["gifs_enabled"])),
+        gifs=GifService(config.klipy_key, enabled=bool(config.values["gifs_enabled"])),
         localsend=localsend,
         control=ServerControl(),
         logger=logger,

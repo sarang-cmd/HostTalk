@@ -124,7 +124,7 @@ def create_app(services: Services) -> Flask:
             "max_upload_mb": int(config.values["max_upload_mb"]),
             "palette": COLOR_GRID,
             "theme": config.values["default_theme"],
-            "gifs_ready": bool(config.giphy_key),
+            "gifs_ready": bool(config.klipy_key),
             "previews_enabled": config.previews_enabled,
             "localsend_enabled": bool(config.localsend.get("enabled")),
             "max_room_members": config.max_room_members,

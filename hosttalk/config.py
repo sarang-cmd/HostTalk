@@ -37,6 +37,8 @@ DEFAULT_CONFIG: dict[str, Any] = {
     "open_browser": True,
     "setup_complete": False,
     "password_hash": "",
+    "host_user": "host",
+    "host_password_hash": "",
     "secret_key": "",
     "console_local_only": True,
     "max_room_members": 20,
@@ -46,8 +48,12 @@ DEFAULT_CONFIG: dict[str, Any] = {
     "default_theme": "auto",
     "previews_enabled": True,
     "gifs_enabled": True,
-    "giphy_key": "",
+    "klipy_key": "",
     "retention_days": 0,
+    "room_locked": False,
+    "read_only": False,
+    "slow_mode_seconds": 0,
+    "notice_text": "",
     "localsend": {
         "enabled": True,
         "alias": "HostTalk",
@@ -157,6 +163,7 @@ class Config:
         if overrides:
             config._apply_overrides(overrides)
         config._migrate_legacy_password()
+        config._migrate_host_credentials()
         if not config.values["secret_key"]:
             config.values["secret_key"] = secrets.token_hex(32)
         config.save()
@@ -178,8 +185,8 @@ class Config:
             self.values["console_local_only"] = coerce_bool(env["HOSTTALK_CONSOLE_LOCAL_ONLY"])
         if env.get("LOG_LEVEL"):
             self.values["log_level"] = coerce_level(env["LOG_LEVEL"])
-        if env.get("GIPHY_API_KEY"):
-            self.values["giphy_key"] = env["GIPHY_API_KEY"].strip()
+        if env.get("KLIPY_API_KEY"):
+            self.values["klipy_key"] = env["KLIPY_API_KEY"].strip()
         if env.get("HOSTTALK_LOCALSEND"):
             self.values["localsend"]["enabled"] = coerce_bool(env["HOSTTALK_LOCALSEND"])
         if env.get("HOSTTALK_LS_PIN"):
@@ -207,6 +214,13 @@ class Config:
                 continue
             elif key in self.values:
                 self.values[key] = value
+
+    def _migrate_host_credentials(self) -> None:
+        """Before 2.2 the console used the room password. Keep those installs in."""
+        if not self.values.get("host_password_hash") and self.values.get("password_hash"):
+            self.values["host_password_hash"] = self.values["password_hash"]
+        if not str(self.values.get("host_user") or "").strip():
+            self.values["host_user"] = "host"
 
     def _migrate_legacy_password(self) -> None:
         """Hash a plain password from .env once, then rely on config.json."""
@@ -269,8 +283,12 @@ class Config:
         return int(self.values["max_room_members"])
 
     @property
-    def giphy_key(self) -> str:
-        return str(self.values.get("giphy_key", "")).strip()
+    def host_user(self) -> str:
+        return str(self.values.get("host_user") or "host")
+
+    @property
+    def klipy_key(self) -> str:
+        return str(self.values.get("klipy_key", "")).strip()
 
     @property
     def localsend(self) -> dict[str, Any]:
@@ -306,12 +324,47 @@ class Config:
         except ValueError:
             return False
 
+    def verify_host_password(self, password: str) -> bool:
+        stored = str(self.values.get("host_password_hash") or "")
+        if not stored or not password:
+            return False
+        try:
+            return bcrypt.checkpw(password.encode("utf-8"), stored.encode("utf-8"))
+        except ValueError:
+            return False
+
+    def set_host_password(self, password: str) -> None:
+        text = str(password or "")
+        if len(text.strip()) < 6:
+            raise ConfigError("Use at least 6 characters for the host password")
+        if len(text) > 128:
+            raise ConfigError("Keep the host password under 128 characters")
+        self.values["host_password_hash"] = bcrypt.hashpw(
+            text.encode("utf-8"), bcrypt.gensalt()
+        ).decode("utf-8")
+        self.save()
+
+    def set_host_user(self, username: str) -> str:
+        text = str(username or "").strip()
+        if not 2 <= len(text) <= 32:
+            raise ConfigError("The host name needs 2 to 32 characters")
+        if not all(char.isalnum() or char in "._-" for char in text):
+            raise ConfigError("Use letters, numbers, dots, dashes, or underscores")
+        self.values["host_user"] = text
+        self.save()
+        return text
+
+    def verify_host_user(self, username: str) -> bool:
+        return secrets.compare_digest(str(username or "").strip().lower(), self.host_user.lower())
+
     def set_password(self, password: str) -> None:
         if len(password.strip()) < 4:
             raise ConfigError("Password must be at least 4 characters")
-        self.values["password_hash"] = bcrypt.hashpw(
-            password.encode("utf-8"), bcrypt.gensalt()
-        ).decode("utf-8")
+        hashed = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+        self.values["password_hash"] = hashed
+        if not self.values.get("host_password_hash"):
+            # A fresh install has one password. The console asks for its own later.
+            self.values["host_password_hash"] = hashed
         self.values["setup_complete"] = True
         self.save()
 
@@ -322,7 +375,7 @@ class Config:
         for key, raw in (patch or {}).items():
             if key not in DEFAULT_CONFIG:
                 continue
-            if key in {"password_hash", "secret_key"} and not allow_secret:
+            if key in {"password_hash", "host_password_hash", "secret_key"} and not allow_secret:
                 continue
             if key == "port":
                 value: Any = coerce_port(raw)
@@ -334,8 +387,16 @@ class Config:
                 "previews_enabled",
                 "gifs_enabled",
                 "setup_complete",
+                "room_locked",
+                "read_only",
             }:
                 value = coerce_bool(raw)
+            elif key == "slow_mode_seconds":
+                value = max(0, min(3600, int(raw)))
+            elif key == "notice_text":
+                value = str(raw or "").replace("\n", " ").strip()[:200]
+            elif key == "host_user":
+                continue
             elif key == "room_name":
                 value = self._clean_room_name(raw)
             elif key == "max_room_members":
@@ -399,7 +460,7 @@ class Config:
             "bind": self.bind,
             "default_theme": self.values["default_theme"],
             "previews_enabled": self.previews_enabled,
-            "gifs_enabled": bool(self.values["gifs_enabled"]) and bool(self.giphy_key),
+            "gifs_enabled": bool(self.values["gifs_enabled"]) and bool(self.klipy_key),
             "localsend_enabled": bool(self.localsend.get("enabled")),
             "max_upload_mb": int(self.values["max_upload_mb"]),
             "setup_complete": self.setup_complete,
@@ -410,6 +471,9 @@ class Config:
         values = json.loads(json.dumps(self.values))
         values["password_hash"] = "set" if values.get("password_hash") else ""
         values["secret_key"] = "set" if values.get("secret_key") else ""
-        values["giphy_key"] = "set" if values.get("giphy_key") else ""
+        values["klipy_key"] = "set" if values.get("klipy_key") else ""
+        values["host_password_hash"] = "set" if values.get("host_password_hash") else ""
+        values["gifs_enabled"] = bool(values.get("gifs_enabled"))
+        values["previews_enabled"] = bool(values.get("previews_enabled"))
         values["localsend"]["pin"] = "set" if values["localsend"].get("pin") else ""
         return values
