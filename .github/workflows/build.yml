@@ -1,7 +1,7 @@
-name: Build HostTalk Portable
+name: Build HostTalk
 
-# The portable build bundles the Python package plus templates and static files.
-# It runs on a tag push, or by hand from the Actions tab.
+# Builds a desktop app and a server binary for Windows, macOS, and Linux.
+# Runs on a tag push, or by hand from the Actions tab.
 
 on:
   workflow_dispatch:
@@ -26,20 +26,32 @@ jobs:
           pip install pyinstaller
           if (Test-Path requirements.txt) { pip install -r requirements.txt }
 
-      - name: Build Windows EXE
+      - name: Build the desktop app
         run: |
-          pyinstaller --noconfirm --onefile --console `
-          --name HostTalk-portable-edition `
+          pyinstaller --noconfirm --onefile --windowed `
+          --name HostTalk `
           --icon icon.ico `
           --add-data "static;static" `
           --add-data "templates;templates" `
-          --hidden-import "waitress" `
+          --hidden-import waitress `
+          desktop.py
+
+      - name: Build the server binary
+        run: |
+          pyinstaller --noconfirm --onefile --console `
+          --name HostTalk-server `
+          --icon icon.ico `
+          --add-data "static;static" `
+          --add-data "templates;templates" `
+          --hidden-import waitress `
           server.py
 
       - uses: actions/upload-artifact@v4
         with:
-          name: HostTalk-portable-edition-windows
-          path: dist/HostTalk-portable-edition.exe
+          name: HostTalk-windows
+          path: |
+            dist/HostTalk.exe
+            dist/HostTalk-server.exe
 
 
   build-macos:
@@ -57,8 +69,7 @@ jobs:
           pip install pyinstaller
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
 
-      # PyInstaller wants .icns on macOS and Pillow is not installed here,
-      # so build the icon set with the tools macOS ships.
+      # PyInstaller wants .icns on macOS, and macOS ships the tools to build one.
       - name: Build the icon
         run: |
           mkdir -p HostTalk.iconset
@@ -68,32 +79,36 @@ jobs:
             sips -z $double $double static/icons/icon-512.png --out "HostTalk.iconset/icon_${size}x${size}@2x.png" > /dev/null
           done
           iconutil -c icns HostTalk.iconset -o HostTalk.icns
-          ls -la HostTalk.icns
 
-      - name: Build macOS binary
+      - name: Build the app
         run: |
-          pyinstaller --noconfirm --onefile --windowed \
-          --name HostTalk-portable-edition \
+          pyinstaller --noconfirm --windowed --name HostTalk \
           --icon HostTalk.icns \
+          --osx-bundle-identifier org.hosttalk.app \
           --add-data "static:static" \
           --add-data "templates:templates" \
+          --hidden-import waitress \
+          desktop.py
+
+      - name: Build the server binary
+        run: |
+          pyinstaller --noconfirm --onefile --console --name HostTalk-server \
+          --add-data "static:static" \
+          --add-data "templates:templates" \
+          --hidden-import waitress \
           server.py
 
-      - name: Create app bundle
+      - name: Pack the app
         run: |
-          mkdir -p HostTalk-portable-edition.app/Contents/MacOS
-          cp dist/HostTalk-portable-edition HostTalk-portable-edition.app/Contents/MacOS/
-
-      - name: Create DMG
-        run: |
-          hdiutil create -volname "HostTalk-portable-edition" \
-          -srcfolder HostTalk-portable-edition.app \
-          -ov -format UDZO HostTalk-portable-edition.dmg
+          ditto -c -k --sequesterRsrc --keepParent dist/HostTalk.app HostTalk-macos.zip
+          cp dist/HostTalk-server HostTalk-server
 
       - uses: actions/upload-artifact@v4
         with:
-          name: HostTalk-portable-edition-macos
-          path: HostTalk-portable-edition.dmg
+          name: HostTalk-macos
+          path: |
+            HostTalk-macos.zip
+            HostTalk-server
 
 
   build-linux:
@@ -111,24 +126,35 @@ jobs:
           pip install pyinstaller
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
 
-      - name: Build Linux binary
+      # The window needs Tk. Without it the app still runs, in a browser.
+      - name: Build the app
         run: |
-          pyinstaller --noconfirm --onefile \
-          --name HostTalk-portable-edition \
+          pyinstaller --noconfirm --onefile --name HostTalk \
           --add-data "static:static" \
           --add-data "templates:templates" \
+          --hidden-import waitress \
+          desktop.py
+
+      - name: Build the server binary
+        run: |
+          pyinstaller --noconfirm --onefile --name HostTalk-server \
+          --add-data "static:static" \
+          --add-data "templates:templates" \
+          --hidden-import waitress \
           server.py
 
       - uses: actions/upload-artifact@v4
         with:
-          name: HostTalk-portable-edition-linux
-          path: dist/HostTalk-portable-edition
+          name: HostTalk-linux
+          path: |
+            dist/HostTalk
+            dist/HostTalk-server
 
 
   publish:
     # Attach the three builds to the GitHub release for this tag.
     needs: [build-windows, build-macos, build-linux]
-    if: startsWith(github.ref, 'refs/tags/')
+    if: startsWith(github.ref, "refs/tags/")
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -136,18 +162,16 @@ jobs:
     steps:
       - uses: actions/download-artifact@v4
         with:
-          path: artifacts
+          path: release
 
-      - name: List what was built
-        run: find artifacts -type f | sort
-
-      - name: Attach the builds to the release
-        env:
-          GH_TOKEN: ${{ github.token }}
-          TAG: ${{ github.ref_name }}
+      - name: Zip each build
         run: |
-          gh release view "$TAG" --repo "$GITHUB_REPOSITORY" > /dev/null \
-            || gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --title "HostTalk $TAG" --generate-notes
-          while read -r file; do
-            gh release upload "$TAG" "$file" --repo "$GITHUB_REPOSITORY" --clobber
-          done < <(find artifacts -type f)
+          cd release
+          for name in *; do
+            if [ -d "$name" ]; then (cd "$name" && zip -r "../$name.zip" .); fi
+          done
+          ls -la
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: release/*.zip
