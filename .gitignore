@@ -1,0 +1,24 @@
+# Runtime data
+data/
+*.db
+*.db-wal
+*.db-shm
+logs/
+uploads/
+.env.local
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+build/
+dist/
+*.spec
+
+# Tooling
+node_modules/
+.tooling/
+/artifacts/
+screenshots/tmp/
+.DS_Store
