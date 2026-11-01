@@ -2,7 +2,7 @@
 
 A chat room for one local network. One machine runs the server. Everyone else opens a browser and joins with a name and the room password.
 
-Version 2.2.0, codename Roll call. Apache 2.0.
+Version 2.2.0, codename Roll call. Apache 2.0. Changes per release: [CHANGELOG.md](CHANGELOG.md).
 
 ![The room at laptop width](static/screenshots/room-desktop.png)
 
