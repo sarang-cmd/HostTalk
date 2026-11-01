@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import hashlib
 import os
 import re
@@ -19,10 +20,12 @@ from .api_common import (
     login_required,
     ok,
     public_attachment,
+    public_person,
     serialize_message,
     services,
+    session_user,
 )
-from .auth import RateLimiter
+from .auth import MAX_AVATAR_BYTES, RateLimiter, host_session
 from .localsend import LocalSendError
 
 bp = Blueprint("files", __name__)
@@ -52,6 +55,14 @@ ALLOWED_EXTENSIONS = {
 }
 BLOCKED_EXTENSIONS = {
     ".exe", ".bat", ".cmd", ".ps1", ".sh", ".msi", ".com", ".scr", ".js", ".html", ".htm", ".svg",
+}
+
+AVATAR_MIME = {
+    ".png": "image/png",
+    ".jpg": "image/jpeg",
+    ".gif": "image/gif",
+    ".webp": "image/webp",
+    ".avif": "image/avif",
 }
 
 _localSend_sessions: dict[str, dict[str, Any]] = {}
@@ -148,6 +159,111 @@ def upload():
         extra={"event": "upload", "user": user["name"], "detail": filename, "count": written},
     )
     return ok(attachment=public_attachment(attachment))
+
+
+def image_suffix(data: bytes) -> str:
+    """Trust the bytes, not the filename the browser sent."""
+    if data.startswith(b"\x89PNG\r\n\x1a\n"):
+        return ".png"
+    if data.startswith(b"\xff\xd8\xff"):
+        return ".jpg"
+    if data.startswith((b"GIF87a", b"GIF89a")):
+        return ".gif"
+    if data[:4] == b"RIFF" and data[8:12] == b"WEBP":
+        return ".webp"
+    if data[4:8] == b"ftyp" and data[8:12] in {b"avif", b"avis"}:
+        return ".avif"
+    return ""
+
+
+def _avatar_dir():
+    folder = services().config.upload_dir / "avatars"
+    folder.mkdir(parents=True, exist_ok=True)
+    return folder
+
+
+def _drop_avatar_file(filename: str) -> None:
+    if not filename:
+        return
+    path = _avatar_dir() / os.path.basename(filename)
+    with contextlib.suppress(OSError):
+        path.unlink(missing_ok=True)
+
+
+@bp.post("/api/me/avatar")
+@login_required
+def upload_avatar():
+    svc = services()
+    user = g.user
+    file = request.files.get("avatar") or request.files.get("file")
+    if not file or not file.filename:
+        return fail("Choose a picture first", 400, field="avatar")
+    data = file.stream.read(MAX_AVATAR_BYTES + 1)
+    if not data:
+        return fail("That picture is empty", 400, field="avatar")
+    if len(data) > MAX_AVATAR_BYTES:
+        return fail("Pictures limit is 3 MB", 413, field="avatar")
+    suffix = image_suffix(data)
+    if not suffix:
+        return fail("Use a PNG, JPEG, GIF, WebP, or AVIF picture", 415, field="avatar")
+
+    stored_name = f"{user['id']}-{secrets.token_hex(6)}{suffix}"
+    (_avatar_dir() / stored_name).write_bytes(data)
+    updated = svc.store.set_user_avatar(user["id"], stored_name) or user
+    _drop_avatar_file(user.get("avatar_file") or "")
+    svc.presence.set_avatar(user["id"], stored_name, float(updated.get("avatar_updated") or 0))
+    public = public_person(updated, svc)
+    svc.broker.broadcast("user.updated", {"user": public, "user_id": user["id"]})
+    svc.broker.broadcast(
+        "presence.changed",
+        {"people": svc.presence.snapshot(), "count": svc.presence.count()},
+    )
+    svc.logger.info(
+        "Profile picture: %s (%s bytes)",
+        user["name"],
+        len(data),
+        extra={"event": "avatar", "user": user["name"], "count": len(data)},
+    )
+    return ok(user=public)
+
+
+@bp.delete("/api/me/avatar")
+@login_required
+def remove_avatar():
+    svc = services()
+    user = g.user
+    _drop_avatar_file(user.get("avatar_file") or "")
+    updated = svc.store.set_user_avatar(user["id"], "") or user
+    svc.presence.set_avatar(user["id"], "", float(updated.get("avatar_updated") or 0))
+    public = public_person(updated, svc)
+    svc.broker.broadcast("user.updated", {"user": public, "user_id": user["id"]})
+    svc.broker.broadcast(
+        "presence.changed",
+        {"people": svc.presence.snapshot(), "count": svc.presence.count()},
+    )
+    return ok(user=public)
+
+
+@bp.get("/api/avatars/<user_id>")
+def serve_avatar(user_id: str):
+    """Pictures are for people in the room or at the host console."""
+    svc = services()
+    if not session_user() and not host_session():
+        return fail("Join the room first", 401)
+    user = svc.store.get_user(user_id)
+    if not user or not user.get("avatar_file"):
+        return fail("No picture for that person", 404)
+    path = _avatar_dir() / os.path.basename(user["avatar_file"])
+    if not path.exists():
+        return fail("That picture is gone", 404)
+    response = send_file(
+        path,
+        mimetype=AVATAR_MIME.get(path.suffix.lower(), "application/octet-stream"),
+        conditional=True,
+        max_age=86400,
+    )
+    response.headers["Cache-Control"] = "private, max-age=86400"
+    return response
 
 
 @bp.get("/api/files/<attachment_id>")
