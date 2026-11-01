@@ -27,7 +27,12 @@ CREATE TABLE IF NOT EXISTS users (
     device_key TEXT NOT NULL DEFAULT '',
     avatar_seed TEXT NOT NULL DEFAULT '',
     created_at REAL NOT NULL,
-    last_nick_at REAL NOT NULL DEFAULT 0
+    last_nick_at REAL NOT NULL DEFAULT 0,
+    role TEXT NOT NULL DEFAULT 'member',
+    avatar_file TEXT NOT NULL DEFAULT '',
+    avatar_updated REAL NOT NULL DEFAULT 0,
+    badge_icon TEXT NOT NULL DEFAULT '',
+    badge_text TEXT NOT NULL DEFAULT ''
 );
 CREATE TABLE IF NOT EXISTS rooms (
     id TEXT PRIMARY KEY,
@@ -36,7 +41,8 @@ CREATE TABLE IF NOT EXISTS rooms (
     created_by TEXT NOT NULL DEFAULT '',
     created_at REAL NOT NULL,
     password_hash TEXT NOT NULL DEFAULT '',
-    member_limit INTEGER NOT NULL DEFAULT 20
+    member_limit INTEGER NOT NULL DEFAULT 20,
+    parent_id TEXT NOT NULL DEFAULT ''
 );
 CREATE TABLE IF NOT EXISTS room_members (
     room_id TEXT NOT NULL REFERENCES rooms(id) ON DELETE CASCADE,
@@ -67,7 +73,9 @@ CREATE TABLE IF NOT EXISTS messages (
     meta TEXT NOT NULL DEFAULT '{}',
     created_at REAL NOT NULL,
     edited_at REAL,
-    deleted_at REAL
+    deleted_at REAL,
+    pinned_at REAL,
+    pinned_by TEXT NOT NULL DEFAULT ''
 );
 CREATE INDEX IF NOT EXISTS idx_messages_room_seq ON messages(room_id, seq);
 CREATE INDEX IF NOT EXISTS idx_messages_quote ON messages(quote_id);
@@ -87,6 +95,13 @@ CREATE TABLE IF NOT EXISTS invites (
     password_hash TEXT NOT NULL DEFAULT '',
     max_uses INTEGER NOT NULL DEFAULT 50,
     uses INTEGER NOT NULL DEFAULT 0
+);
+CREATE TABLE IF NOT EXISTS custom_emoji (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL COLLATE NOCASE UNIQUE,
+    stored_name TEXT NOT NULL,
+    added_by TEXT NOT NULL,
+    created_at REAL NOT NULL
 );
 CREATE TABLE IF NOT EXISTS nickname_log (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -145,13 +160,39 @@ class Store:
             conn = self._connect()
             try:
                 conn.executescript(SCHEMA)
+                self._add_missing_columns(conn)
                 conn.execute(
-                    "INSERT INTO meta(key, value) VALUES('schema', '3') "
+                    "INSERT INTO meta(key, value) VALUES('schema', '4') "
                     "ON CONFLICT(key) DO UPDATE SET value=excluded.value"
                 )
                 conn.commit()
             finally:
                 conn.close()
+
+    @staticmethod
+    def _add_missing_columns(conn: sqlite3.Connection) -> None:
+        """Older data folders keep their rows. New columns join them."""
+        additions = {
+            "users": {
+                "role": "TEXT NOT NULL DEFAULT 'member'",
+                "avatar_file": "TEXT NOT NULL DEFAULT ''",
+                "avatar_updated": "REAL NOT NULL DEFAULT 0",
+                "badge_icon": "TEXT NOT NULL DEFAULT ''",
+                "badge_text": "TEXT NOT NULL DEFAULT ''",
+            },
+            "messages": {
+                "pinned_at": "REAL",
+                "pinned_by": "TEXT NOT NULL DEFAULT ''",
+            },
+            "rooms": {
+                "parent_id": "TEXT NOT NULL DEFAULT ''",
+            },
+        }
+        for table, columns in additions.items():
+            present = {row["name"] for row in conn.execute(f"PRAGMA table_info({table})")}
+            for name, decl in columns.items():
+                if name not in present:
+                    conn.execute(f"ALTER TABLE {table} ADD COLUMN {name} {decl}")
 
     @staticmethod
     def _row(row: sqlite3.Row | None) -> dict[str, Any] | None:
@@ -179,6 +220,17 @@ class Store:
     def get_user_by_name(self, name: str) -> dict[str, Any] | None:
         return self._row(
             self.conn.execute("SELECT * FROM users WHERE name=? COLLATE NOCASE", (name,)).fetchone()
+        )
+
+    def get_user_by_device(self, device_key: str) -> dict[str, Any] | None:
+        """A device keeps the same name, picture, and role across visits."""
+        key = str(device_key or "").strip()
+        if not key:
+            return None
+        return self._row(
+            self.conn.execute(
+                "SELECT * FROM users WHERE device_key=? ORDER BY created_at LIMIT 1", (key,)
+            ).fetchone()
         )
 
     def create_user(self, name: str, device_key: str = "", color: str = "") -> dict[str, Any]:
@@ -220,6 +272,52 @@ class Store:
     def set_user_color(self, user_id: str, color: str) -> None:
         self.conn.execute("UPDATE users SET color=? WHERE id=?", (color, user_id))
         self.conn.commit()
+
+    def set_user_role(self, user_id: str, role: str) -> dict[str, Any] | None:
+        self.conn.execute("UPDATE users SET role=? WHERE id=?", (role, user_id))
+        self.conn.commit()
+        return self.get_user(user_id)
+
+    def role_counts(self) -> dict[str, int]:
+        rows = self.conn.execute("SELECT role, COUNT(*) AS c FROM users GROUP BY role").fetchall()
+        return {row["role"]: int(row["c"]) for row in rows}
+
+    def promote_first_host(self, user_id: str) -> dict[str, Any] | None:
+        """The first person in the room runs it. Later hosts come from the console."""
+        row = self.conn.execute("SELECT 1 FROM users WHERE role='host' LIMIT 1").fetchone()
+        if row is None:
+            self.conn.execute("UPDATE users SET role='host' WHERE id=?", (user_id,))
+            self.conn.commit()
+        return self.get_user(user_id)
+
+    def set_user_badge(self, user_id: str, icon: str, text: str) -> dict[str, Any] | None:
+        self.conn.execute(
+            "UPDATE users SET badge_icon=?, badge_text=? WHERE id=?", (icon, text, user_id)
+        )
+        self.conn.commit()
+        return self.get_user(user_id)
+
+    def set_user_avatar(self, user_id: str, filename: str) -> dict[str, Any] | None:
+        self.conn.execute(
+            "UPDATE users SET avatar_file=?, avatar_updated=? WHERE id=?",
+            (filename, now(), user_id),
+        )
+        self.conn.commit()
+        return self.get_user(user_id)
+
+    def claim_default_name(self, base: str, device_key: str) -> dict[str, Any]:
+        """Claim the house name, adding a number when someone got there first."""
+        for index in range(1, 100):
+            candidate = base if index == 1 else f"{base} {index}"[:32].strip()
+            existing = self.get_user_by_name(candidate)
+            if existing is None:
+                return self.create_user(candidate, device_key=device_key)
+            stored = existing.get("device_key") or ""
+            if stored in ("", device_key):
+                if not stored and device_key:
+                    self.set_device_key(existing["id"], device_key)
+                return existing
+        return self.create_user(f"{base} {secrets.token_hex(2)}"[:32], device_key=device_key)
 
     def rename_user(
         self, user_id: str, new_name: str, *, ip: str = "", cooldown_seconds: int = 3600
@@ -276,12 +374,13 @@ class Store:
         member_limit: int = 20,
         password_hash: str = "",
         room_id: str | None = None,
+        parent_id: str = "",
     ) -> dict[str, Any]:
         rid = room_id or new_id("r_")
         self.conn.execute(
-            "INSERT INTO rooms(id, name, kind, created_by, created_at, password_hash, member_limit) "
-            "VALUES(?,?,?,?,?,?,?)",
-            (rid, name, kind, created_by, now(), password_hash, member_limit),
+            "INSERT INTO rooms(id, name, kind, created_by, created_at, password_hash, "
+            "member_limit, parent_id) VALUES(?,?,?,?,?,?,?,?)",
+            (rid, name, kind, created_by, now(), password_hash, member_limit, parent_id),
         )
         self.conn.commit()
         return self.get_room(rid) or {}
@@ -294,10 +393,14 @@ class Store:
             FROM rooms r
             WHERE r.id=? OR EXISTS (
                 SELECT 1 FROM room_members m WHERE m.room_id=r.id AND m.user_id=?
+            ) OR EXISTS (
+                SELECT 1 FROM room_members parent
+                WHERE parent.room_id=r.parent_id AND parent.user_id=?
             )
-            ORDER BY CASE r.kind WHEN 'main' THEN 0 WHEN 'dm' THEN 1 ELSE 2 END, r.created_at
+            ORDER BY CASE r.kind WHEN 'main' THEN 0 WHEN 'dm' THEN 1 ELSE 2 END,
+                     r.parent_id, r.created_at
             """,
-            (MAIN_ROOM, user_id),
+            (MAIN_ROOM, user_id, user_id),
         ).fetchall()
         return [dict(row) for row in rows]
 
@@ -525,6 +628,38 @@ class Store:
         ).fetchall()
         return [self._decorate(row) or {} for row in rows]
 
+    # ------------------------------------------------------------- pins
+    def set_pinned(
+        self, message_id: str, *, pinned: bool, user_id: str = ""
+    ) -> dict[str, Any] | None:
+        if pinned:
+            self.conn.execute(
+                "UPDATE messages SET pinned_at=?, pinned_by=? WHERE id=?",
+                (now(), user_id, message_id),
+            )
+        else:
+            self.conn.execute(
+                "UPDATE messages SET pinned_at=NULL, pinned_by='' WHERE id=?", (message_id,)
+            )
+        self.conn.commit()
+        return self.get_message(message_id)
+
+    def pinned_messages(self, room_id: str, limit: int = 50) -> list[dict[str, Any]]:
+        rows = self.conn.execute(
+            "SELECT * FROM messages WHERE room_id=? AND pinned_at IS NOT NULL "
+            "AND deleted_at IS NULL ORDER BY pinned_at DESC LIMIT ?",
+            (room_id, max(1, min(200, limit))),
+        ).fetchall()
+        return [self._decorate(row) or {} for row in rows]
+
+    def count_pinned(self, room_id: str) -> int:
+        row = self.conn.execute(
+            "SELECT COUNT(*) AS c FROM messages WHERE room_id=? AND pinned_at IS NOT NULL "
+            "AND deleted_at IS NULL",
+            (room_id,),
+        ).fetchone()
+        return int(row["c"]) if row else 0
+
     # -------------------------------------------------------------- reactions
     def toggle_reaction(self, message_id: str, user_id: str, emoji: str) -> dict[str, Any]:
         existing = self.conn.execute(
@@ -626,6 +761,48 @@ class Store:
     def prune_invites(self) -> None:
         self.conn.execute("DELETE FROM invites WHERE expires_at < ?", (now(),))
         self.conn.commit()
+
+    # ----------------------------------------------------------- custom emoji
+    def add_custom_emoji(
+        self, name: str, stored_name: str, added_by: str
+    ) -> dict[str, Any]:
+        emoji_id = new_id("e_")
+        self.conn.execute(
+            "INSERT INTO custom_emoji(id, name, stored_name, added_by, created_at) "
+            "VALUES(?,?,?,?,?)",
+            (emoji_id, name, stored_name, added_by, now()),
+        )
+        self.conn.commit()
+        return self.get_custom_emoji(emoji_id) or {}
+
+    def get_custom_emoji(self, emoji_id: str) -> dict[str, Any] | None:
+        return self._row(
+            self.conn.execute("SELECT * FROM custom_emoji WHERE id=?", (emoji_id,)).fetchone()
+        )
+
+    def get_custom_emoji_by_name(self, name: str) -> dict[str, Any] | None:
+        return self._row(
+            self.conn.execute(
+                "SELECT * FROM custom_emoji WHERE name=? COLLATE NOCASE", (name,)
+            ).fetchone()
+        )
+
+    def list_custom_emoji(self) -> list[dict[str, Any]]:
+        rows = self.conn.execute(
+            "SELECT * FROM custom_emoji ORDER BY created_at"
+        ).fetchall()
+        return [dict(row) for row in rows]
+
+    def delete_custom_emoji(self, emoji_id: str) -> dict[str, Any] | None:
+        emoji = self.get_custom_emoji(emoji_id)
+        if not emoji:
+            return None
+        self.conn.execute(
+            "DELETE FROM reactions WHERE emoji=?", (f"custom:{emoji_id}",)
+        )
+        self.conn.execute("DELETE FROM custom_emoji WHERE id=?", (emoji_id,))
+        self.conn.commit()
+        return emoji
 
     # ------------------------------------------------------------------ stats
     def stats(self) -> dict[str, Any]:
