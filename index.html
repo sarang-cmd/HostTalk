@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<!--
+  Static landing page for the project. This file is not served by the app.
+  The app has its own front page in templates/landing.html.
+  Open this one from the repository root, or publish the repository root
+  with GitHub Pages. All paths below are relative to this file.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>HostTalk, a chat room for one local network</title>
+  <meta name="description" content="HostTalk runs on one machine on your network. Everyone on the same Wi-Fi opens a browser and joins. Messages, files, and logs stay on the host.">
+  <meta name="theme-color" content="#f1f0eb">
+  <meta property="og:title" content="HostTalk, a chat room for one local network">
+  <meta property="og:description" content="One machine runs the room. Everyone else opens a browser. No accounts, no cloud, no monthly bill.">
+  <meta property="og:type" content="website">
+  <meta property="og:image" content="static/screenshots/room-desktop.png">
+  <link rel="icon" href="static/icons/favicon.ico" sizes="any">
+  <link rel="stylesheet" href="static/css/tokens.css">
+  <link rel="stylesheet" href="static/css/base.css">
+  <link rel="stylesheet" href="static/css/marketing.css">
+</head>
+<body class="site">
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="site-top">
+    <a class="brand" href="#top">
+      <svg class="brand__mark" viewBox="0 0 32 32" aria-hidden="true">
+        <rect width="32" height="32" rx="9" fill="var(--ink)"/>
+        <rect class="mark-room" x="9" y="14" width="14" height="9" rx="1.5"/>
+        <circle class="mark-dot" cx="22" cy="10" r="2.4"/>
+      </svg>
+      <span>HostTalk</span>
+    </a>
+    <nav class="site-nav" aria-label="Site">
+      <a href="#how">How it works</a>
+      <a href="#run">Run it</a>
+      <a href="https://github.com/sarang-cmd/HostTalk/releases/latest">Releases</a>
+      <a href="https://github.com/sarang-cmd/HostTalk">Source</a>
+    </nav>
+  </header>
+
+  <main id="main">
+    <div class="wrap" id="top">
+      <section class="hero hero--front">
+        <div>
+          <h1>A room for the people on your network.</h1>
+          <p class="hero__lede">HostTalk runs on one machine in the building. Everyone on the same Wi-Fi opens a browser, picks a name, and joins. Messages, files, and logs stay on the host.</p>
+          <div class="hero__actions">
+            <a class="btn btn--primary" href="https://github.com/sarang-cmd/HostTalk/releases/latest">Get the release</a>
+            <a class="btn" href="https://github.com/sarang-cmd/HostTalk#readme">Read the guide</a>
+          </div>
+          <p class="status-line">
+            <span class="status-line__dot" aria-hidden="true"></span>
+            <span>Free to run. Apache 2.0. No account, no server bill.</span>
+          </p>
+        </div>
+        <aside class="hero__aside">
+          <div class="hero__facts">
+            <div class="hero__fact"><span>Python</span><strong>3.10 or newer</strong></div>
+            <div class="hero__fact"><span>Storage</span><strong>SQLite</strong></div>
+            <div class="hero__fact"><span>Default port</span><strong>7284</strong></div>
+            <div class="hero__fact"><span>License</span><strong>Apache 2.0</strong></div>
+            <div class="hero__fact"><span>Internet needed</span><strong>No</strong></div>
+          </div>
+          <p class="fineprint">Screenshots come from a demo room. The names and messages are placeholders.</p>
+        </aside>
+      </section>
+
+      <figure class="figure figure--hero">
+        <img src="static/screenshots/room-desktop.png" alt="The HostTalk room on a laptop: rooms on the left, a message thread in the middle, people on the right." width="1600" height="1000" loading="eager">
+        <figcaption>The room at laptop width. Rooms, quotes, reactions, an image attachment, and who is here.</figcaption>
+      </figure>
+
+      <section class="section" id="what">
+        <div class="section__head">
+          <h2>Room chat, with the parts a small group needs.</h2>
+          <p>One server runs the rooms, the files, and the host console. There is no second service to install and no account to create.</p>
+        </div>
+        <div class="feature-list">
+          <div>
+            <h3>One room, or several</h3>
+            <p>The main room holds everyone. Named rooms hold up to 20 people. Direct threads stay between two.</p>
+          </div>
+          <div>
+            <h3>Messages stay on the host</h3>
+            <p>Every message lands in a SQLite file on the machine that serves the room. No relay, no cloud copy, no analytics.</p>
+          </div>
+          <div>
+            <h3>Files up to 20 MB</h3>
+            <p>Images show in the thread. Other files download. The browser shrinks an oversized photo before upload.</p>
+          </div>
+          <div>
+            <h3>Quotes, reactions, edits</h3>
+            <p>Reply with a quote, add a reaction, edit or delete your own text. A deleted message leaves a quiet placeholder.</p>
+          </div>
+          <div>
+            <h3>A console for the host</h3>
+            <p>Checks, people, rooms, logs, settings, and a stop button, in a browser. The console answers on the host machine only by default.</p>
+          </div>
+          <div>
+            <h3>Files from phones</h3>
+            <p>LocalSend devices on the same network send files straight into the room. No cable, no cloud drive.</p>
+          </div>
+          <div>
+            <h3>Link previews, guarded</h3>
+            <p>The host fetches a page title and image when someone posts a link. Requests to private addresses are refused before any request leaves the machine.</p>
+          </div>
+          <div>
+            <h3>GIF search, when you add a key</h3>
+            <p>Search runs through the host, so the GIPHY key stays on the server. Search is off until a key is set in the console.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="how">
+        <div class="section__head">
+          <h2>Three steps, one machine.</h2>
+          <p>The server serves the app, checks the room password, stores each message in SQLite, and pushes new messages to open browsers over one long-lived connection.</p>
+        </div>
+        <ol class="steps">
+          <li>
+            <h3>One host</h3>
+            <p>A laptop, desktop, or small server starts HostTalk. The app, the database, and uploaded files live on one disk.</p>
+          </li>
+          <li>
+            <h3>Same Wi-Fi</h3>
+            <p>A guest opens the address and enters a name plus the room password. The browser holds a signed session cookie.</p>
+          </li>
+          <li>
+            <h3>Stored here</h3>
+            <p>A message is written to the database and streamed to every open browser. No third-party service carries the text.</p>
+          </li>
+        </ol>
+        <p class="fineprint">The <a href="https://github.com/sarang-cmd/HostTalk#how-it-works">repository notes</a> cover the request path, the schema, the session model, and the file guard in more detail.</p>
+      </section>
+
+      <section class="section" id="run">
+        <div class="section__head">
+          <h2>Two commands on the host.</h2>
+          <p>Python 3.10 or newer. No build step, no database server, no Node toolchain. The setup screen opens in a browser on the machine which runs the server.</p>
+        </div>
+        <div class="run-grid">
+          <div>
+            <h3>From source</h3>
+            <pre class="code-block"><code>python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+python server.py</code></pre>
+            <p class="fineprint">On Windows use <code>.venv\Scripts\activate</code>. The console then opens at <code>http://127.0.0.1:7284/console</code>.</p>
+          </div>
+          <div>
+            <h3>Other ways to start</h3>
+            <table class="spec">
+              <tbody>
+                <tr><th>systemd</th><td>Unit file and installer in <code>deploy/</code>.</td></tr>
+                <tr><th>launchd</th><td>Plist for a login session on macOS.</td></tr>
+                <tr><th>Docker</th><td>Image and compose file with a fixed data volume.</td></tr>
+                <tr><th>Windows</th><td>Batch launcher for a desktop shortcut.</td></tr>
+                <tr><th>Proxy</th><td>Caddy and nginx examples with the stream settings that matter.</td></tr>
+              </tbody>
+            </table>
+            <p class="fineprint">Each option is documented in the <a href="https://github.com/sarang-cmd/HostTalk#deploy-it">repository</a>.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="stats">
+        <div class="section__head">
+          <h2>Every figure on the server is countable.</h2>
+          <p>The app ships a stats page. It counts rows in the database, bytes in the data folder, lines of code in the build, and the versions under both. The page reads those figures on request and keeps no record of visitors.</p>
+        </div>
+        <figure class="figure">
+          <img src="static/screenshots/stats.png" alt="The HostTalk stats page: instance figures, a code table with bars, build versions, and bundled libraries." width="1600" height="1000" loading="lazy">
+          <figcaption>The stats page on a demo room. Message counts, file bytes, and test totals read from the running build.</figcaption>
+        </figure>
+        <p class="fineprint">No message text, names, or addresses appear on the page. Nothing is sent anywhere.</p>
+      </section>
+
+      <section class="section" id="limits">
+        <div class="section__head">
+          <h2>What it does not do</h2>
+          <p>These limits are part of the design. Knowing them makes the tool easier to trust.</p>
+        </div>
+        <dl class="limits">
+          <div>
+            <dt>No accounts</dt>
+            <dd>A name and a device key hold your place. Someone with the room password on a new device picks a name and joins. The host keeps a log of name changes.</dd>
+          </div>
+          <div>
+            <dt>No end-to-end encryption</dt>
+            <dd>Traffic is plain HTTP inside the local network. The machine hosting the room stores message text in SQLite and reads it. Run HostTalk on hardware you control.</dd>
+          </div>
+          <div>
+            <dt>No relay across networks</dt>
+            <dd>Guests outside the Wi-Fi need a VPN or a tunnel you set up. HostTalk does not offer one, and it does not reach the internet to deliver messages.</dd>
+          </div>
+          <div>
+            <dt>No cloud backup</dt>
+            <dd>Copy the data folder to back up messages and uploads. Clearing a room in the console deletes its messages for good.</dd>
+          </div>
+          <div>
+            <dt>Third-party requests are explicit</dt>
+            <dd>A GIF search sends the words to GIPHY. A link preview fetches the page from the host. Nothing else leaves the network unless you post a link.</dd>
+          </div>
+        </dl>
+      </section>
+
+      <section class="section" id="screens">
+        <div class="section__head">
+          <h2>On a phone and in the console</h2>
+          <p>The room fits a phone without a separate app. The console gives the host one screen for checks, settings, logs, and people.</p>
+        </div>
+        <div class="shots">
+          <figure class="figure figure--phone">
+            <img src="static/screenshots/room-mobile.png" alt="The HostTalk room at phone width, with the message composer along the bottom edge." width="430" height="932" loading="lazy">
+            <figcaption>Phone width. Drawers hold the room list and people.</figcaption>
+          </figure>
+          <figure class="figure">
+            <img src="static/screenshots/console.png" alt="The HostTalk host console: checks, people, rooms, logs, and server settings." width="1440" height="900" loading="lazy">
+            <figcaption>The host console. Configuration, logs, and moderation on one screen.</figcaption>
+          </figure>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <footer class="site-foot wrap">
+    <span>HostTalk, Apache 2.0. Made for one building at a time.</span>
+    <nav aria-label="Site">
+      <a href="https://github.com/sarang-cmd/HostTalk">Source</a>
+      <a href="https://github.com/sarang-cmd/HostTalk/releases/latest">Releases</a>
+      <a href="https://github.com/sarang-cmd/HostTalk/issues">Issues</a>
+      <a href="https://github.com/sarang-cmd/HostTalk/blob/main/LICENSE">License</a>
+    </nav>
+  </footer>
+</body>
+</html>
