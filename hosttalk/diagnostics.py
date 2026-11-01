@@ -114,9 +114,9 @@ def run_checks(services: Services) -> list[dict[str, str]]:
         _result(
             "gifs",
             "GIF search",
-            "ok" if config.giphy_key else "warn",
-            "Ready" if config.giphy_key else "Add a GIPHY key to enable search",
-            "Get a free key at developers.giphy.com",
+            "ok" if config.klipy_key else "warn",
+            "Ready" if config.klipy_key else "Add a KLIPY key to enable search",
+            "Get a key at partner.klipy.com",
         )
     )
     manager = services.localsend
