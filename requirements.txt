@@ -1,9 +1,8 @@
-Flask
-Flask-SocketIO
-gevent
-pystray
-Pillow
-bcrypt
-dotenv
-requests
-beautifulsoup4
+Flask>=3.0,<4
+python-dotenv>=1.0
+bcrypt>=4.1
+requests>=2.31
+beautifulsoup4>=4.12
+waitress>=3.0
+cryptography>=42.0
+qrcode>=7.4
