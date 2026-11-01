@@ -75,8 +75,12 @@
   --warn-wash: #f4ead6;
 
   /* Type */
-  --font-display: "Archivo", "Noto Emoji", "Helvetica Neue", Arial, sans-serif;
-  --font-ui: "Public Sans", "Noto Emoji", "Helvetica Neue", Arial, sans-serif;
+  /* Color emoji first. The bundled monochrome Noto file is last, so an
+     offline machine still draws a glyph instead of an empty box. */
+  --font-emoji: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji",
+    "Twemoji Mozilla", "Segoe UI Symbol";
+  --font-display: "Archivo", var(--font-emoji), "Noto Emoji", "Helvetica Neue", Arial, sans-serif;
+  --font-ui: "Public Sans", var(--font-emoji), "Noto Emoji", "Helvetica Neue", Arial, sans-serif;
   --display-wght: 600;
   --display-wdth: 108%;
   --text-xs: 0.75rem;
