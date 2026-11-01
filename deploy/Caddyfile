@@ -1,0 +1,15 @@
+# Optional: put HostTalk behind HTTPS on a small network.
+# Caddy issues a local certificate and the browser gets a secure context,
+# which is what a service worker and install prompt need.
+{
+    auto_https disable_redirects
+}
+
+https://hosttalk.local {
+    tls internal
+    encode gzip
+    reverse_proxy 127.0.0.1:7284 {
+        # Server-sent events need a long read timeout and no buffering.
+        flush_interval -1
+    }
+}
