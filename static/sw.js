@@ -1,7 +1,7 @@
 /* HostTalk service worker.
    Install and offline use need a secure context, so this runs on localhost or
    behind an HTTPS proxy. Plain LAN HTTP browsers skip registration. */
-const CACHE = "hosttalk-shell-2.1.0-room";
+const CACHE = "hosttalk-shell-2.2.0-room";
 const SHELL = [
   "/room",
   "/static/css/tokens.css",
@@ -9,6 +9,7 @@ const SHELL = [
   "/static/css/app.css",
   "/static/js/app.js",
   "/static/js/core.js",
+  "/static/js/emoji.js",
   "/static/js/render.js",
   "/static/fonts/archivo-var.woff2",
   "/static/fonts/public-sans-400.woff2",
