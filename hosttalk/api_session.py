@@ -18,14 +18,20 @@ from .api_common import (
     services,
     session_user,
 )
+from .api_emoji import all_emoji
 from .auth import (
     COLOR_GRID,
+    DEFAULT_NAME,
     NICKNAME_COOLDOWN_SECONDS,
+    ROLE_HOST,
     RateLimiter,
     ValidationError,
     bind_session,
+    clean_badge_icon,
+    clean_badge_text,
     clean_color,
     clean_name,
+    clean_role,
     clean_room_name,
     client_ip,
     is_host_request,
@@ -63,6 +69,10 @@ def status():
             "gifs_enabled": bool(config.values["gifs_enabled"]),
             "gifs_ready": bool(config.klipy_key),
             "localsend_enabled": bool(config.localsend.get("enabled")),
+            "notice_text": config.values.get("notice_text") or "",
+            "read_only": bool(config.values.get("read_only")),
+            "slow_mode_seconds": int(config.values.get("slow_mode_seconds") or 0),
+            "room_locked": bool(config.values.get("room_locked")),
             "default_theme": config.values["default_theme"],
             "palette": COLOR_GRID,
             "online": svc.presence.count(),
@@ -110,8 +120,9 @@ def create_session():
     if not allowed:
         return fail("Too many attempts. Wait a moment.", 429, retry_after=retry_after)
     data = payload()
+    typed_name = str(data.get("name") or "").strip()
     try:
-        name = clean_name(data.get("name"))
+        name = clean_name(typed_name) if typed_name else ""
     except ValidationError as exc:
         return fail(exc.message, exc.status, field=exc.field)
     password = str(data.get("password") or "")
@@ -124,9 +135,20 @@ def create_session():
     limiter.reset(ip)
     limiter.hit(ip)
 
-    user, error = svc.store.claim_name(name, device_key)
-    if error or not user:
-        return fail(error or "That name is not available", 409, field="name")
+    # A device that joined before keeps its name, picture, and role.
+    known = svc.store.get_user_by_device(device_key) if device_key else None
+    if config.values.get("room_locked") and known is None:
+        return fail("The host locked the room. Ask for the unlock.", 403, field="password")
+    if known:
+        user = known
+    elif name:
+        user, error = svc.store.claim_name(name, device_key)
+        if error or not user:
+            return fail(error or "That name is not available", 409, field="name")
+    else:
+        # Joining without a name is allowed. The room hands out the house name.
+        user = svc.store.claim_default_name(DEFAULT_NAME, device_key)
+    user = svc.store.promote_first_host(user["id"]) or user
 
     bind_session(user)
     svc.broker.broadcast("presence.changed", _presence_payload())
@@ -140,6 +162,7 @@ def create_session():
         people=svc.presence.snapshot(),
         server=svc.config.public_settings(),
         reactions=_reactions(),
+        emoji=all_emoji(),
     )
 
 
@@ -159,13 +182,21 @@ def me():
     svc = services()
     user = session_user()
     if not user:
-        return ok(user=None, rooms=[], server=svc.config.public_settings(), palette=COLOR_GRID, reactions=_reactions())
+        return ok(
+            user=None,
+            rooms=[],
+            server=svc.config.public_settings(),
+            palette=COLOR_GRID,
+            reactions=_reactions(),
+            emoji=all_emoji(),
+        )
     return ok(
         user=public_person(user, svc),
         rooms=public_rooms_for(user["id"], svc),
         server=svc.config.public_settings(),
         palette=COLOR_GRID,
         reactions=_reactions(),
+        emoji=all_emoji(),
     )
 
 
@@ -210,6 +241,26 @@ def update_me():
                 extra={"event": "nickname", "user": new_name, "ip": client_ip()},
             )
 
+    if "badge_icon" in data or "badge_text" in data:
+        try:
+            icon = clean_badge_icon(
+                data["badge_icon"] if "badge_icon" in data else user.get("badge_icon")
+            )
+            text = clean_badge_text(
+                data["badge_text"] if "badge_text" in data else user.get("badge_text")
+            )
+        except ValidationError as exc:
+            return fail(exc.message, exc.status, field=exc.field)
+        if text and not icon:
+            return fail("Pick a badge icon first", 400, field="badge_icon")
+        if icon and not text:
+            text = ""
+        updated = svc.store.set_user_badge(user["id"], icon, text) or user
+        user = updated
+        svc.presence.set_badge(user["id"], icon, text)
+        changes["badge"] = f"{icon}:{text}" if icon else ""
+        svc.broker.broadcast("user.updated", {"user": public_person(user, svc), "user_id": user["id"]})
+
     if "color" in data:
         try:
             color = clean_color(data.get("color"))
@@ -230,6 +281,39 @@ def update_me():
 
     svc.broker.broadcast("presence.changed", _presence_payload())
     return ok(user=public_person(svc.store.get_user(user["id"]) or user, svc), changes=changes)
+
+
+@bp.post("/api/people/<user_id>/role")
+@login_required
+def set_role(user_id: str):
+    """Only the host hands out roles. The host console can move the host role."""
+    svc = services()
+    me = g.user
+    if (me.get("role") or "member") != ROLE_HOST:
+        return fail("Only the host changes roles", 403, field="role")
+    target = svc.store.get_user(user_id)
+    if not target:
+        return fail("That person is not here", 404)
+    if target["id"] == me["id"]:
+        return fail("You already run this room", 400, field="role")
+    try:
+        role = clean_role(payload().get("role"))
+    except ValidationError as exc:
+        return fail(exc.message, exc.status, field=exc.field)
+    updated = svc.store.set_user_role(target["id"], role) or target
+    svc.presence.set_role(target["id"], role)
+    svc.broker.broadcast(
+        "user.updated",
+        {"user": public_person(updated, svc), "user_id": updated["id"], "role": role},
+    )
+    svc.broker.broadcast("presence.changed", _presence_payload())
+    svc.logger.info(
+        "Role change: %s is %s",
+        updated["name"],
+        role,
+        extra={"event": "role", "user": updated["name"], "detail": role, "ip": client_ip()},
+    )
+    return ok(user=public_person(updated, svc))
 
 
 @bp.get("/api/people")
