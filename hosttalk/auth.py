@@ -6,8 +6,9 @@ import re
 import time
 import unicodedata
 from collections import deque
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any, Callable
+from typing import Any
 
 from flask import g, jsonify, request, session
 
@@ -23,7 +24,7 @@ ALLOWED_REACTIONS = ["👍", "🎉", "👀", "✅", "😂", "🙏", "🔥", "�
 
 # Twenty distinct colors. Each passes 4.5:1 contrast against white text.
 COLOR_GRID = [
-    "#B5483A", "#A86A1F", "#7A6A1B", "#3F7A3F", "#1F7A6A",
+    "#B5483A", "#9C6019", "#7A6A1B", "#3F7A3F", "#1F7A6A",
     "#1F6B8C", "#2B4B9B", "#5B3F9B", "#8C3F86", "#A33F63",
     "#6B4A3A", "#4A5A38", "#2F6E4A", "#2C6E8F", "#434C6B",
     "#6B3F2F", "#8A5A0F", "#3A6B5A", "#6B2F4A", "#34527A",
@@ -61,6 +62,9 @@ def clean_message(raw: Any) -> str:
         raise ValidationError(
             f"Messages limit is {MAX_MESSAGE_LEN} characters", field="body"
         )
+    # Three blank lines in a row add height and no meaning.
+    while "\n\n\n" in text:
+        text = text.replace("\n\n\n", "\n\n")
     return text
 
 
@@ -68,6 +72,8 @@ def clean_room_name(raw: Any) -> str:
     text = " ".join(str(raw or "").split())
     if not text:
         raise ValidationError("Enter a room name", field="name")
+    if not any(char.isalnum() for char in text):
+        raise ValidationError("Add a letter or a number to the room name", field="name")
     if len(text) > MAX_ROOM_NAME_LEN:
         raise ValidationError(
             f"Room names limit is {MAX_ROOM_NAME_LEN} characters", field="name"
@@ -76,8 +82,9 @@ def clean_room_name(raw: Any) -> str:
 
 
 def clean_color(raw: Any) -> str:
+    """Return a palette color. The grid is closed, so every name stays readable."""
     text = str(raw or "").strip().upper()
-    if not re.fullmatch(r"#[0-9A-F]{6}", text):
+    if text not in COLOR_GRID:
         raise ValidationError("Pick a color from the grid", field="color")
     return text
 
