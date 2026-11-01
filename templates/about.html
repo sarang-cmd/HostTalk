@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="{{ theme if theme != 'auto' else 'light' }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>How HostTalk works</title>
+  <meta name="description" content="HostTalk is a chat room for one local network. Here is how a message travels, what the server keeps, and what it does not do.">
+  <meta name="theme-color" content="#f1f0eb">
+  <link rel="icon" href="/static/icons/favicon.ico" sizes="any">
+  <link rel="stylesheet" href="/static/css/tokens.css?v={{ static_v }}">
+  <link rel="stylesheet" href="/static/css/base.css?v={{ static_v }}">
+  <link rel="stylesheet" href="/static/css/marketing.css?v={{ static_v }}">
+</head>
+<body class="site">
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="site-top">
+    <a class="brand" href="/">
+      <svg class="brand__mark" viewBox="0 0 32 32" aria-hidden="true">
+        <rect width="32" height="32" rx="9" fill="var(--ink)"/>
+        <rect class="mark-room" x="9" y="14" width="14" height="9" rx="1.5"/>
+        <circle class="mark-dot" cx="22" cy="10" r="2.4"/>
+      </svg>
+      <span>HostTalk</span>
+    </a>
+    <nav class="site-nav" aria-label="Site">
+      <a href="/">Open the room</a>
+      <a href="/terms">Terms</a>
+      <a href="/privacy">Privacy</a>
+    </nav>
+  </header>
+
+  <main id="main">
+    <div class="wrap">
+      <section class="hero">
+        <div>
+          <h1>A room on your network.</h1>
+          <p class="hero__lede">HostTalk runs on one machine in the building. Everyone on the same Wi-Fi opens a browser and joins. No accounts, no cloud, no monthly bill.</p>
+          <div class="hero__actions">
+            <a class="btn btn--primary" href="/">Open the room</a>
+            <a class="btn" href="#run">Run it yourself</a>
+          </div>
+        </div>
+        <aside class="hero__aside">
+          <div class="hero__facts">
+            <div class="hero__fact"><span>Version</span><strong>{{ version }}</strong></div>
+            <div class="hero__fact"><span>License</span><strong>Apache 2.0</strong></div>
+            <div class="hero__fact"><span>Default port</span><strong>7284</strong></div>
+            <div class="hero__fact"><span>Storage</span><strong>SQLite</strong></div>
+            <div class="hero__fact"><span>Internet needed</span><strong>No</strong></div>
+          </div>
+          <p class="fineprint">This machine serves the room at</p>
+          <p class="hero__address">{{ network.address }}</p>
+          <p class="fineprint">Bookmark it on any device that joins.</p>
+        </aside>
+      </section>
+
+      <figure class="figure figure--hero">
+        <img src="/static/screenshots/room-desktop.png" alt="The HostTalk room on a laptop: a list of rooms on the left, a message thread in the middle, and people on the right." width="1600" height="1000" loading="eager">
+        <figcaption>The room at laptop width. Names and messages come from a demo room set up for these screenshots.</figcaption>
+      </figure>
+
+      <section class="section" id="how">
+        <div class="section__head">
+          <h2>How a message travels</h2>
+          <p>Three steps, one machine. HostTalk serves the app, checks the room password, stores each message in SQLite, and pushes new messages to open browsers over one long-lived connection.</p>
+        </div>
+        <ol class="steps">
+          <li>
+            <h3>One host</h3>
+            <p>A laptop, desktop, or small server starts HostTalk. The app, the database, and uploaded files live on one disk.</p>
+          </li>
+          <li>
+            <h3>Same Wi-Fi</h3>
+            <p>A guest opens the address and enters a name plus the room password. The browser holds a signed session cookie.</p>
+          </li>
+          <li>
+            <h3>Stored here</h3>
+            <p>A message is written to the database and streamed to every open browser. No third-party service carries the text.</p>
+          </li>
+        </ol>
+        <div class="diagram">
+          <svg viewBox="0 0 900 300" role="img" aria-labelledby="diagram-title diagram-desc">
+            <title id="diagram-title">HostTalk network diagram</title>
+            <desc id="diagram-desc">Browsers on the Wi-Fi talk to the HostTalk server over HTTP and server-sent events. The server writes to SQLite, uploads, and logs on the host. LocalSend devices exchange files with the server over the LocalSend protocol.</desc>
+            <g fill="none" stroke="currentColor" stroke-width="1.2">
+              <rect x="20" y="40" width="200" height="150" rx="8" opacity="0.5"/>
+              <rect x="330" y="30" width="240" height="190" rx="8" opacity="0.5"/>
+              <rect x="680" y="40" width="200" height="150" rx="8" opacity="0.5"/>
+              <path d="M230 105h88" stroke-dasharray="4 4"/>
+              <path d="M582 105h86" stroke-dasharray="4 4"/>
+              <path d="M450 232v34" stroke-dasharray="4 4"/>
+            </g>
+            <g fill="currentColor">
+              <text x="36" y="64" font-size="12" font-weight="600">Browsers on the Wi-Fi</text>
+              <text x="36" y="92" font-size="11" opacity="0.7">Laptop</text>
+              <text x="36" y="116" font-size="11" opacity="0.7">Phone</text>
+              <text x="36" y="140" font-size="11" opacity="0.7">Tablet</text>
+              <text x="36" y="172" font-size="10" opacity="0.55">Signed session cookie</text>
+
+              <text x="346" y="54" font-size="12" font-weight="600">HostTalk server</text>
+              <text x="346" y="80" font-size="11" opacity="0.7">Flask app on port 7284</text>
+              <text x="346" y="102" font-size="11" opacity="0.7">Session and rate limits</text>
+              <text x="346" y="124" font-size="11" opacity="0.7">Message and room API</text>
+              <text x="346" y="146" font-size="11" opacity="0.7">Server-sent event stream</text>
+              <text x="346" y="168" font-size="11" opacity="0.7">Uploads and link previews</text>
+              <text x="346" y="196" font-size="10" opacity="0.55">Plain HTTP inside the LAN</text>
+
+              <text x="696" y="64" font-size="12" font-weight="600">Host machine</text>
+              <text x="696" y="92" font-size="11" opacity="0.7">SQLite database</text>
+              <text x="696" y="116" font-size="11" opacity="0.7">Uploads folder</text>
+              <text x="696" y="140" font-size="11" opacity="0.7">JSON line logs</text>
+              <text x="696" y="172" font-size="10" opacity="0.55">One data folder</text>
+
+              <text x="330" y="286" font-size="11" opacity="0.7">LocalSend devices</text>
+              <text x="450" y="286" font-size="10" opacity="0.55">multicast discovery and file transfer</text>
+            </g>
+            <g fill="var(--accent)">
+              <text x="244" y="98" font-size="10">HTTP</text>
+              <text x="596" y="98" font-size="10">SQL</text>
+              <text x="458" y="256" font-size="10">UDP 53317</text>
+              <rect x="20" y="40" width="6" height="6" rx="1"/>
+              <rect x="330" y="30" width="6" height="6" rx="1"/>
+              <rect x="680" y="40" width="6" height="6" rx="1"/>
+            </g>
+          </svg>
+        </div>
+      </section>
+
+      <section class="section" id="inside">
+        <div class="section__head">
+          <h2>What the server keeps, and where</h2>
+          <p>The host machine holds every message, file, and log. The browser holds a session cookie, a display name, a device key, and your appearance settings in local storage.</p>
+        </div>
+        <div class="feature-list">
+          <div>
+            <h3>Rooms and direct threads</h3>
+            <p>One main room for the network. Named rooms hold up to 20 people. Direct threads stay private between two people and take a password.</p>
+          </div>
+          <div>
+            <h3>Files up to 20 MB</h3>
+            <p>Images render in the thread. Other files download as attachments. The browser compresses an oversized image before upload, and the server checks the limit again.</p>
+          </div>
+          <div>
+            <h3>Quotes, reactions, edits</h3>
+            <p>Reply to a message with its quote attached. Add one of ten reactions. Edit or delete your own messages; the room keeps a quiet placeholder.</p>
+          </div>
+          <div>
+            <h3>Link previews with a guard</h3>
+            <p>The server fetches a page title and image when someone posts a link. Requests to private addresses are refused, so a preview cannot probe the network.</p>
+          </div>
+          <div>
+            <h3>GIF search when you add a key</h3>
+            <p>Search goes through the server to GIPHY. The key stays on the host. GIF search is off until a key is added in the console.</p>
+          </div>
+          <div>
+            <h3>LocalSend devices</h3>
+            <p>Phones and computers running LocalSend appear after a scan. Files they send land in the main room. Received files follow the same 20 MB limit.</p>
+          </div>
+          <div>
+            <h3>A console for the host</h3>
+            <p>Checks, settings, logs, people, rooms, exports, and a stop control. The console listens on this machine only by default.</p>
+          </div>
+          <div>
+            <h3>SQLite and JSON logs</h3>
+            <p>The database runs in WAL mode. Logs rotate at 2 MB with three backups. Nothing ships to an analytics service.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="limits">
+        <div class="section__head">
+          <h2>What it does not do</h2>
+          <p>These limits are part of the design. Knowing them makes the tool easier to trust.</p>
+        </div>
+        <dl class="limits">
+          <div>
+            <dt>No accounts</dt>
+            <dd>A name and a device key hold your place. Someone with the room password on a new device picks a name and joins. The host keeps a log of name changes.</dd>
+          </div>
+          <div>
+            <dt>No end-to-end encryption</dt>
+            <dd>Traffic is plain HTTP inside the local network. The machine hosting the room stores message text in SQLite and reads it. Run HostTalk on hardware you control.</dd>
+          </div>
+          <div>
+            <dt>No relay across networks</dt>
+            <dd>Guests outside the Wi-Fi need a VPN or a tunnel you set up. HostTalk does not offer one, and it does not reach the internet to deliver messages.</dd>
+          </div>
+          <div>
+            <dt>No cloud backup</dt>
+            <dd>Copy the data folder to back up messages and uploads. Clearing a room in the console deletes its messages for good.</dd>
+          </div>
+          <div>
+            <dt>Third-party requests are explicit</dt>
+            <dd>A GIF search sends the words to GIPHY. A link preview fetches the page from the host. Nothing else leaves the network unless you post a link.</dd>
+          </div>
+        </dl>
+      </section>
+
+      <section class="section" id="run">
+        <div class="section__head">
+          <h2>Run it yourself</h2>
+          <p>Python 3.10 or newer. Two commands on the host, one browser window for setup. The console sets the password, port, and LocalSend preference.</p>
+        </div>
+        <div class="run-grid">
+          <div>
+            <h3>From source</h3>
+            <pre class="code-block"><code>python -m venv .venv
+# Windows: .venv\Scripts\activate
+# macOS and Linux:
+source .venv/bin/activate
+pip install -r requirements.txt
+python server.py</code></pre>
+            <p class="fineprint">Then open http://127.0.0.1:7284/console on the host.</p>
+          </div>
+          <div>
+            <h3>Options</h3>
+            <table class="spec">
+              <tbody>
+                <tr><th><code>--port 8080</code></th><td>Listen on another port. Config also stores it.</td></tr>
+                <tr><th><code>--host 127.0.0.1</code></th><td>Keep the room on one machine.</td></tr>
+                <tr><th><code>--data-dir</code></th><td>Move the database, uploads, and logs.</td></tr>
+                <tr><th><code>--headless</code></th><td>Do not open a browser. Use with a service.</td></tr>
+                <tr><th><code>--no-localsend</code></th><td>Turn discovery off for this run.</td></tr>
+                <tr><th><code>setup</code></th><td>Set the password without the browser.</td></tr>
+                <tr><th><code>doctor</code></th><td>Check the network, port, and data folder.</td></tr>
+                <tr><th><code>config</code></th><td>Read or set a value in config.json.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <p class="fineprint">Service files for systemd, launchd, Docker, and Windows live in the <code>deploy</code> folder. A compose file starts HostTalk with a fixed data volume.</p>
+      </section>
+
+      <section class="section" id="shots">
+        <div class="section__head">
+          <h2>On a phone and in the console</h2>
+          <p>The room fits a phone without a separate app. The console gives the host one screen for checks, settings, logs, and people.</p>
+        </div>
+        <div class="shots">
+          <figure class="figure figure--phone">
+            <img src="/static/screenshots/room-mobile.png" alt="The HostTalk room at phone width, with the message composer above the bottom edge." width="430" height="932" loading="lazy">
+            <figcaption>Phone width. Drawers hold the room list and people.</figcaption>
+          </figure>
+          <figure class="figure">
+            <img src="/static/screenshots/console.png" alt="The HostTalk host console: checks, people, rooms, logs, and server settings." width="1440" height="900" loading="lazy">
+            <figcaption>The host console. Configuration, logs, and moderation on one screen.</figcaption>
+          </figure>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <footer class="site-foot wrap">
+    <span>HostTalk {{ version }} · Apache 2.0 · Hosted at {{ network.address }}</span>
+    <nav aria-label="Legal">
+      <a href="/">Room</a>
+      <a href="/console">Host console</a>
+      <a href="/terms">Terms</a>
+      <a href="/privacy">Privacy</a>
+    </nav>
+  </footer>
+</body>
+</html>
