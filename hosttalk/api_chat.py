@@ -18,8 +18,10 @@ from .api_common import (
     services,
 )
 from .auth import (
+    CUSTOM_EMOJI_PREFIX,
     RateLimiter,
     ValidationError,
+    can_moderate,
     clean_emoji,
     clean_message,
     clean_room_name,
@@ -63,11 +65,27 @@ def create_room():
         name = clean_room_name(data.get("name"))
     except ValidationError as exc:
         return fail(exc.message, exc.status, field="name")
+    parent_id = str(data.get("parent_id") or "").strip()
+    if parent_id:
+        parent = svc.store.get_room(parent_id)
+        if not parent or parent["kind"] == "dm":
+            return fail("That room cannot hold another room", 400, field="parent_id")
+        if parent_id != MAIN_ROOM and not svc.store.is_member(parent_id, user["id"]):
+            return fail("Join the room above this one first", 403, field="parent_id")
+    password = str(data.get("password") or "")
+    if password and len(password) < 4:
+        return fail("Use at least 4 characters", 400, field="password")
     room = svc.store.create_room(
         name,
         user["id"],
         kind="group",
         member_limit=svc.config.max_room_members,
+        password_hash=(
+            bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+            if password
+            else ""
+        ),
+        parent_id=parent_id,
     )
     svc.store.add_member(room["id"], user["id"])
     svc.broker.subscribe_rooms(user["id"], [room["id"]])
@@ -124,6 +142,48 @@ def join_room():
         "Room join: %s", room["name"], extra={"event": "room.join", "room": room["name"], "user": user["name"]}
     )
     return ok(room=svc.room_public(svc.store.get_room(room["id"]) or room, user["id"]), messages=messages)
+
+
+@bp.post("/api/rooms/<room_id>/enter")
+@login_required
+def enter_room(room_id: str):
+    """Step into a room that sits inside a room you already joined."""
+    svc = services()
+    user = g.user
+    room = svc.store.get_room(room_id)
+    if not room or room["kind"] == "main":
+        return fail("That room does not exist", 404)
+    if svc.store.is_member(room_id, user["id"]):
+        return ok(room=svc.room_public(room, user["id"]), already_member=True)
+    parent_id = room.get("parent_id") or ""
+    if parent_id and parent_id != MAIN_ROOM and not svc.store.is_member(parent_id, user["id"]):
+        return fail("Join the room above this one first", 403)
+    if svc.store.member_count(room_id) >= int(room["member_limit"]):
+        return fail("That room is full", 409)
+    stored = room.get("password_hash") or ""
+    if stored:
+        password = str(payload().get("password") or "")
+        if not password:
+            return fail("This room asks for a password", 401, password_required=True)
+        if not bcrypt.checkpw(password.encode("utf-8"), stored.encode("utf-8")):
+            return fail("Wrong password for that room", 401, password_required=True)
+    svc.store.add_member(room_id, user["id"])
+    svc.broker.subscribe_rooms(user["id"], [room_id])
+    svc.broker.publish(
+        [room_id],
+        "room.member_joined",
+        {"room_id": room_id, "user": {"id": user["id"], "name": user["name"]}},
+    )
+    messages = serialize_messages(svc.store.list_messages(room_id, limit=50), svc)
+    svc.logger.info(
+        "Room enter: %s",
+        room["name"],
+        extra={"event": "room.enter", "room": room["name"], "user": user["name"]},
+    )
+    return ok(
+        room=svc.room_public(svc.store.get_room(room_id) or room, user["id"]),
+        messages=messages,
+    )
 
 
 @bp.post("/api/rooms/<room_id>/leave")
@@ -287,6 +347,20 @@ def send_message():
         return fail("Slow down for a moment", 429, retry_after=retry)
     limiter.hit(user["id"])
 
+    privileged = bool(session_host()) or can_moderate(user.get("role") or "")
+    config = svc.config
+    if config.values.get("read_only") and not privileged:
+        return fail("The host set this room to read only", 403)
+    slow_seconds = int(config.values.get("slow_mode_seconds") or 0)
+    if slow_seconds and not privileged:
+        if svc.slow_limiter is None or svc.slow_window != slow_seconds:
+            svc.slow_limiter = RateLimiter(limit=1, window=slow_seconds)
+            svc.slow_window = slow_seconds
+        ok_slow, wait = svc.slow_limiter.check(user["id"])
+        if not ok_slow:
+            return fail(f"Slow mode. Wait {wait} seconds.", 429, retry_after=wait)
+        svc.slow_limiter.hit(user["id"])
+
     data = payload()
     room_id = str(data.get("room_id") or MAIN_ROOM)
     room, error = room_for_user(room_id, user["id"])
@@ -373,13 +447,52 @@ def delete_message(message_id: str):
     message = svc.store.get_message(message_id)
     if not message:
         return fail("That message was not found", 404)
-    is_host = bool(session_host())
-    if message["user_id"] != user["id"] and not is_host:
-        return fail("You can only delete your own messages", 403)
+    privileged = bool(session_host()) or can_moderate(user.get("role") or "")
+    if message["user_id"] != user["id"] and not privileged:
+        return fail("Only the host and moderators delete other messages", 403)
     updated = svc.store.delete_message(message_id)
     public = serialize_message(updated or message, svc)
     svc.broker.publish([message["room_id"]], "message.deleted", {"message": public})
     return ok(message=public)
+
+
+@bp.post("/api/messages/<message_id>/pin")
+@login_required
+def pin_message(message_id: str):
+    svc = services()
+    user = g.user
+    message = svc.store.get_message(message_id)
+    if not message or message.get("deleted_at"):
+        return fail("That message was not found", 404)
+    room, error = room_for_user(message["room_id"], user["id"])
+    if not room:
+        return fail(error, 403)
+    if not (bool(session_host()) or can_moderate(user.get("role") or "")):
+        return fail("Only the host and moderators pin messages", 403)
+    pinned = bool(payload().get("pinned", True))
+    updated = svc.store.set_pinned(message_id, pinned=pinned, user_id=user["id"])
+    public = serialize_message(updated or message, svc)
+    svc.broker.publish(
+        [message["room_id"]],
+        "message.updated",
+        {"message": public, "pinned": pinned, "by": user["name"]},
+    )
+    svc.logger.info(
+        "%s a message", "Pinned" if pinned else "Unpinned",
+        extra={"event": "pin", "user": user["name"], "detail": message_id},
+    )
+    return ok(message=public, pinned=pinned)
+
+
+@bp.get("/api/rooms/<room_id>/pinned")
+@login_required
+def pinned_messages(room_id: str):
+    svc = services()
+    room, error = room_for_user(room_id, g.user["id"])
+    if not room:
+        return fail(error, 404 if not svc.store.get_room(room_id) else 403)
+    messages = svc.store.pinned_messages(room_id)
+    return ok(messages=serialize_messages(messages, svc), room_id=room_id)
 
 
 @bp.post("/api/messages/<message_id>/reactions")
@@ -395,6 +508,10 @@ def react(message_id: str):
         emoji = clean_emoji(payload().get("emoji"))
     except ValidationError as exc:
         return fail(exc.message, exc.status, field="emoji")
+    if emoji.startswith(CUSTOM_EMOJI_PREFIX):
+        emoji_id = emoji.split(":", 1)[1]
+        if not svc.store.get_custom_emoji(emoji_id):
+            return fail("That emoji is gone", 404, field="emoji")
     reactions = svc.store.toggle_reaction(message_id, g.user["id"], emoji)
     svc.broker.publish(
         [message["room_id"]],
