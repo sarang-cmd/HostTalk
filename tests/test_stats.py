@@ -10,6 +10,7 @@ from hosttalk.stats import (
     runtime_stats,
     source_stats,
 )
+from hosttalk.version import CODENAME, __version__
 
 
 def test_human_bytes_uses_one_unit():
@@ -61,8 +62,8 @@ def test_source_stats_leaves_bundled_libraries_out():
 
 def test_runtime_stats_reports_real_versions():
     figures = runtime_stats()
-    assert figures["version"] == "2.0.0"
-    assert figures["codename"] == "Roomtone"
+    assert figures["version"] == __version__
+    assert figures["codename"] == CODENAME
     assert figures["python"].startswith("3.")
     assert figures["flask"] != "not installed"
     assert figures["sqlite"]
