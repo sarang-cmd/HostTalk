@@ -15,7 +15,6 @@ Notable changes per release. Earlier releases are in the git history.
 ### Messages
 
 - The message toolbar floats above the row and appears on hover, with a divider before delete.
-- Duplicate reactions now read as one line per emoji and never move the thread.
 - Any emoji works as a reaction.
 - The host adds custom emoji pictures. Everyone reacts with them.
 - Host and moderators pin messages. The pinned sheet jumps back to the source.
@@ -25,7 +24,7 @@ Notable changes per release. Earlier releases are in the git history.
 
 - Rooms sit inside rooms. Each level can carry its own password.
 - The rail indents by depth and shows the rooms under a room you joined.
-- Twelve curated colors. Distance checks keep two people from wearing the same one.
+- The color palette stays at twenty steps with a contrast check on each.
 
 ### Host
 
