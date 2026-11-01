@@ -18,6 +18,7 @@ export const state = {
   lastSeen: new Map(),
   palette: bootstrap.palette || [],
   reactions: [],
+  emoji: [],
   connected: false,
   gifReady: Boolean(bootstrap.gifs_ready),
   prefs: loadPrefs(),
@@ -188,6 +189,67 @@ export function debouncePer(fn, wait = 2000) {
 
 export function avatarStyle(color) {
   return `background:${color || "#34527A"}`;
+}
+
+/**
+ * A picture when the person has one, initials when they do not.
+ * The initials ride along on the image so a broken file falls back cleanly.
+ */
+export function avatarHtml(person, className = "avatar", { lazy = true } = {}) {
+  const safe = person || {};
+  const label = initials(safe.name);
+  const color = safe.color || "#34527A";
+  if (safe.avatar_url) {
+    return `<img class="${className} avatar--img" src="${escapeHtml(safe.avatar_url)}" alt=""
+      data-initials="${escapeHtml(label)}" data-color="${escapeHtml(color)}"
+      aria-hidden="true"${lazy ? ' loading="lazy"' : ""}>`;
+  }
+  return `<span class="${className}" style="${avatarStyle(color)}" aria-hidden="true">${label}</span>`;
+}
+
+export function badgeHtml(person) {
+  const icon = (person && person.badge_icon) || "";
+  const text = (person && person.badge_text) || "";
+  if (!icon || !text) return "";
+  return `<span class="badge" title="Badge"><svg class="icon icon--xs" aria-hidden="true"><use href="#i-${escapeHtml(icon)}"></use></svg>${escapeHtml(text)}</span>`;
+}
+
+export function roleLabel(role) {
+  if (role === "host") return "Host";
+  if (role === "moderator") return "Mod";
+  return "";
+}
+
+export function roleBadge(role) {
+  const label = roleLabel(role);
+  if (!label) return "";
+  return `<span class="role role--${escapeHtml(role)}">${label}</span>`;
+}
+
+export function customEmoji(value) {
+  if (!value || !value.startsWith("custom:")) return null;
+  return (state.emoji || []).find((item) => item.token === value) || null;
+}
+
+export function reactionHtml(value) {
+  const custom = customEmoji(value);
+  if (custom) {
+    return `<img class="reaction__img" src="${escapeHtml(custom.url)}" alt=":${escapeHtml(custom.name)}:" loading="lazy">`;
+  }
+  if (String(value).startsWith("custom:")) {
+    return '<span class="reaction__gone" aria-hidden="true">?</span>';
+  }
+  return `<span aria-hidden="true">${escapeHtml(value)}</span>`;
+}
+
+export function reactionLabel(value, count) {
+  const custom = customEmoji(value);
+  const name = custom ? `:${custom.name}:` : value;
+  return `${name}, ${count} ${count === 1 ? "reaction" : "reactions"}`;
+}
+
+export function canModerate(person) {
+  return Boolean(person && (person.role === "host" || person.role === "moderator"));
 }
 
 export function qrSvg(text, cellSize = 4) {
