@@ -59,6 +59,8 @@ def build_parser() -> argparse.ArgumentParser:
     doctor = subparsers.add_parser("doctor", help="Check the network and data folder")
     doctor.add_argument("--data-dir", default=None)
 
+    subparsers.add_parser("app", help="Start the server with a desktop window")
+
     subparsers.add_parser("version", help="Print the version")
     return parser
 
@@ -181,8 +183,8 @@ def command_config(args: argparse.Namespace) -> int:
     if not args.key:
         print("Add a key, for example: hosttalk config get port")
         return 1
-    if args.key == "giphy_key":
-        print("The GIPHY key is write-only. Set it in the host console.")
+    if args.key in {"giphy_key", "klipy_key", "password_hash", "host_password_hash"}:
+        print("That key is write-only. Set it in the host console.")
         return 1
     if args.action == "get":
         value = config.values.get(args.key)
@@ -330,9 +332,14 @@ def command_serve(args: argparse.Namespace) -> int:
 
 def main(argv: list[str] | None = None) -> int:
     argv = list(sys.argv[1:] if argv is None else argv)
-    known = {"serve", "setup", "config", "reset-password", "doctor", "version"}
+    known = {"serve", "setup", "config", "reset-password", "doctor", "version", "app"}
     if not argv or (argv[0].startswith("-") and argv[0] not in {"-h", "--help", "--version"}) or argv[0] not in known and argv[0] not in {"-h", "--help", "--version"}:
         argv.insert(0, "serve")
+    if argv[0] == "app":
+        # The desktop window keeps its own flags, so pass the rest straight on.
+        from .desktop import main as desktop_main
+
+        return desktop_main(argv[1:])
 
     parser = build_parser()
     args = parser.parse_args(argv)
