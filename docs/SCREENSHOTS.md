@@ -34,6 +34,7 @@ The room text is demo copy. "Front room", "Kitchen plans", and the three names a
 | `search.png` | Search results |
 | `stats.png`, `stats-full.png` | Project stats at 1440 wide, viewport and full page |
 | `stats-mobile.png` | Project stats at phone width |
+| `project-page.png` | The static `index.html` at 1440 wide, full page |
 | `console.png` | Host console at 1440 wide |
 | `console-full.png` | Host console, full page |
 | `console-mobile.png` | Host console at phone width |
