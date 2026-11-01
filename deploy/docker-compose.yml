@@ -1,0 +1,18 @@
+# HostTalk in a container. The host network keeps LocalSend discovery working,
+# because multicast does not cross the default bridge.
+services:
+  hosttalk:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    image: hosttalk:2.0.0
+    container_name: hosttalk
+    restart: unless-stopped
+    network_mode: host
+    environment:
+      SERVER_PASSWORD: change-this-password
+      HOSTTALK_ROOM_NAME: Front room
+      HOSTTALK_PORT: "7284"
+      LOG_LEVEL: INFO
+    volumes:
+      - ./data:/data
