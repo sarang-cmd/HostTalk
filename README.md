@@ -135,6 +135,8 @@ Source counts are cached for the life of the process. Instance figures are read 
 
 `site/index.html` is a static page about the project. React renders it, Tailwind supplies the styles, and Vite writes the build. The folder holds plain files with hashed asset names and relative paths. Publish `site/` anywhere: GitHub Pages, a bucket, a folder on the host. Flask does not serve it, so a running room never depends on it.
 
+The page runs at <https://hosttalk.vercel.app>. The Vercel project takes `landing/` as its root, runs `cp -r ../site dist`, and serves `dist`. No install step and no second build, so the published files match the committed folder.
+
 The page covers the product shot, eight features, the three steps a message takes, the two commands to start the server, the stats page, the limits, and the phone and console shots. Every download link points at the latest release.
 
 ### Source and build

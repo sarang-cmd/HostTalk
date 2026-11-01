@@ -35,6 +35,7 @@ The room text is demo copy. "Front room", "Kitchen plans", and the three names a
 | `stats.png`, `stats-full.png` | Project stats at 1440 wide, viewport and full page |
 | `stats-mobile.png` | Project stats at phone width |
 | `project-page.png` | The built project page at 1440 wide, full page |
+| `social-preview.png` | The 1280 by 640 card GitHub shows for a shared link |
 | `console.png` | Host console at 1440 wide |
 | `console-full.png` | Host console, full page |
 | `console-mobile.png` | Host console at phone width |
@@ -42,6 +43,21 @@ The room text is demo copy. "Front room", "Kitchen plans", and the three names a
 | `about.png`, `about-full.png` | How it works page |
 | `terms.png`, `privacy.png` | Draft legal pages |
 | `not-found.png` | Error page |
+
+## Social preview
+
+`docs/social-preview.png` is the card GitHub shows when someone shares the repository link. It is 1280 by 640, the size GitHub asks for, and it uses the same paper, ink, and type as the site.
+
+The card is markup, not a drawing. `docs/social-preview.html` holds the layout and reads the fonts and the app window from `static/`, so a rebuild reads the same sources as the site. To capture it:
+
+```bash
+# Any headless browser works. Capture the card at 1280 by 640, device scale 2.
+# Then scale the result down to 1280 by 640 and save over docs/social-preview.png.
+```
+
+Upload the PNG at Settings, General, Social preview. GitHub has no API for that setting, so the file stays in the repository and the upload is one manual step.
+
+`tests/test_landing.py` reads the PNG header and checks the size.
 
 ## Front page and room path
 

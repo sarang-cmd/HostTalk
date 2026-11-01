@@ -1,0 +1,197 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>HostTalk social preview</title>
+    <!--
+      The card GitHub shows when the repository link is shared. 1280 by 640.
+
+      Open the file in a browser, capture the card at 1280 by 640 with device
+      scale 2, then scale the result to 1280 by 640. GitHub shows the PNG when
+      someone shares the repository link. Upload it at Settings, General,
+      Social preview. GitHub offers no API for that setting.
+    -->
+    <style>
+      @font-face {
+        font-family: "Archivo";
+        src: url("../static/fonts/archivo-var.woff2") format("woff2-variations");
+        font-weight: 100 900;
+        font-stretch: 62% 125%;
+        font-display: block;
+      }
+      @font-face {
+        font-family: "Public Sans";
+        src: url("../static/fonts/public-sans-400.woff2") format("woff2");
+        font-weight: 400;
+        font-display: block;
+      }
+      @font-face {
+        font-family: "Public Sans";
+        src: url("../static/fonts/public-sans-500.woff2") format("woff2");
+        font-weight: 500;
+        font-display: block;
+      }
+
+      :root {
+        --paper: #f1f0eb;
+        --surface: #faf9f6;
+        --ink: #171a18;
+        --ink-2: #454a45;
+        --muted: #61675f;
+        --line: #d6d4ca;
+        --line-strong: #b7b5aa;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        width: 1280px;
+        height: 640px;
+        overflow: hidden;
+        background: var(--paper);
+        color: var(--ink);
+        font-family: "Public Sans", Arial, sans-serif;
+        -webkit-font-smoothing: antialiased;
+      }
+
+      .card {
+        display: flex;
+        flex-direction: column;
+        width: 1280px;
+        height: 640px;
+        padding: 44px 64px 40px;
+      }
+
+      .top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+
+      .word {
+        display: flex;
+        align-items: center;
+        gap: 11px;
+        font-family: "Archivo", Arial, sans-serif;
+        font-size: 24px;
+        font-weight: 600;
+        font-variation-settings: "wdth" 108;
+        letter-spacing: -0.02em;
+      }
+
+      .version {
+        font-size: 13px;
+        color: var(--muted);
+      }
+
+      .body {
+        margin-top: 78px;
+      }
+
+      h1 {
+        margin: 0;
+        max-width: 1010px;
+        font-family: "Archivo", Arial, sans-serif;
+        font-size: 74px;
+        font-weight: 600;
+        font-variation-settings: "wdth" 108;
+        letter-spacing: -0.034em;
+        line-height: 0.98;
+      }
+
+      .lede {
+        margin: 24px 0 0;
+        max-width: 560px;
+        font-size: 21px;
+        line-height: 1.45;
+        color: var(--ink-2);
+      }
+
+      .foot {
+        margin-top: auto;
+        display: flex;
+        align-items: flex-end;
+        justify-content: space-between;
+        gap: 40px;
+        border-top: 1px solid var(--line);
+        padding-top: 16px;
+      }
+
+      .facts {
+        display: flex;
+        gap: 50px;
+        font-size: 14px;
+        color: var(--ink);
+      }
+
+      .facts em {
+        display: block;
+        margin-bottom: 3px;
+        font-style: normal;
+        font-size: 12px;
+        color: var(--muted);
+      }
+
+      .side {
+        text-align: right;
+      }
+
+      .addr {
+        display: inline-block;
+        padding: 8px 12px;
+        border: 1px dashed var(--line-strong);
+        border-radius: 8px;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        font-size: 15px;
+        color: var(--ink-2);
+      }
+
+      .note {
+        margin: 8px 0 0;
+        font-size: 12px;
+        color: var(--muted);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <div class="top">
+        <div class="word">
+          <svg width="34" height="34" viewBox="0 0 32 32" aria-hidden="true">
+            <rect width="32" height="32" rx="9" fill="#171a18" />
+            <rect x="9" y="14" width="14" height="9" rx="1.5" fill="#f1f0eb" />
+            <circle cx="22" cy="10" r="2.4" fill="#1d3fa8" />
+          </svg>
+          <span>HostTalk</span>
+        </div>
+        <div class="version">2.1.0, Roomtone. Apache 2.0.</div>
+      </div>
+
+      <div class="body">
+        <h1>A room for the people on your network.</h1>
+        <p class="lede">
+          Chat, files, and logs stay on one machine. Everyone on the same Wi-Fi opens a browser and
+          joins.
+        </p>
+      </div>
+
+      <div class="foot">
+        <div class="facts">
+          <div><em>Python</em>3.10 or newer</div>
+          <div><em>Storage</em>SQLite</div>
+          <div><em>Default port</em>7284</div>
+          <div><em>Internet needed</em>No</div>
+        </div>
+        <div class="side">
+          <div class="addr">http://192.168.1.20:7284/room</div>
+          <p class="note">An example address. The console prints the address for your network.</p>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>
