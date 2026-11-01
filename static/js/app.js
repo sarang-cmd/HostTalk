@@ -540,15 +540,32 @@ function markRead(roomId) {
 
 function renderBanner() {
   const banner = byId("thread-banner");
-  if (!banner) return;
-  const notice = String(state.bootstrap.notice_text || "").trim();
-  const slow = Number(state.bootstrap.slow_mode_seconds || 0);
-  let text = "";
-  if (notice) text = notice;
-  else if (state.bootstrap.read_only) text = "Read only. Only the host and moderators write here.";
-  else if (slow > 0) text = `Slow mode: one message every ${slow} second${slow === 1 ? "" : "s"}.`;
-  banner.textContent = text;
-  banner.hidden = !text;
+  if (banner) {
+    const notice = String(state.bootstrap.notice_text || "").trim();
+    const slow = Number(state.bootstrap.slow_mode_seconds || 0);
+    let text = "";
+    if (notice) text = notice;
+    else if (state.bootstrap.read_only) text = "Read only. Only the host and moderators write here.";
+    else if (slow > 0) text = `Slow mode: one message every ${slow} second${slow === 1 ? "" : "s"}.`;
+    banner.textContent = text;
+    banner.hidden = !text;
+  }
+  renderComposerState();
+}
+
+/** A member in a read only room gets a quiet composer instead of a rejected send. */
+function renderComposerState() {
+  const input = byId("composer-input");
+  const send = byId("send-btn");
+  if (!input || !send) return;
+  if (!input.dataset.idlePlaceholder) input.dataset.idlePlaceholder = input.placeholder;
+  const privileged = Boolean(state.me && (state.me.role === "host" || state.me.role === "moderator"));
+  const blocked = Boolean(state.bootstrap.read_only) && !privileged;
+  input.readOnly = blocked;
+  input.placeholder = blocked
+    ? "Read only. The host and moderators write here."
+    : input.dataset.idlePlaceholder;
+  send.disabled = blocked;
 }
 
 function updateTitle() {
