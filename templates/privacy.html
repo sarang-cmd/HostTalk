@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="{{ theme if theme != 'auto' else 'light' }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Privacy · HostTalk</title>
+  <meta name="robots" content="noindex">
+  <link rel="icon" href="/static/icons/favicon.ico" sizes="any">
+  <link rel="stylesheet" href="/static/css/tokens.css?v={{ static_v }}">
+  <link rel="stylesheet" href="/static/css/base.css?v={{ static_v }}">
+  <link rel="stylesheet" href="/static/css/marketing.css?v={{ static_v }}">
+</head>
+<body class="site">
+  <header class="site-top">
+    <a class="brand" href="/">
+      <svg class="brand__mark" viewBox="0 0 32 32" aria-hidden="true">
+        <rect width="32" height="32" rx="9" fill="var(--ink)"/>
+        <rect class="mark-room" x="9" y="14" width="14" height="9" rx="1.5"/>
+        <circle class="mark-dot" cx="22" cy="10" r="2.4"/>
+      </svg>
+      <span>HostTalk</span>
+    </a>
+    <nav class="site-nav" aria-label="Site">
+      <a href="/">Open the room</a>
+      <a href="/about">How it works</a>
+      <a href="/terms">Terms</a>
+    </nav>
+  </header>
+
+  <main class="prose-page">
+    <p class="draft-banner">Draft for review. Confirm details with the host of your room.</p>
+    <h1>Privacy note</h1>
+    <p class="lede">HostTalk keeps data on the machine that hosts the room. This note lists what is stored, where it goes, and how the host removes it.</p>
+
+    <div class="prose">
+      <h2>What the host machine stores</h2>
+      <ul>
+        <li>Display names, an internal user id, an assigned color, and a device key per name.</li>
+        <li>Messages, quoted messages, reactions, room names, and direct thread membership.</li>
+        <li>Files you upload, with the original filename, content type, size, and a SHA-256 digest.</li>
+        <li>Password hashes for the room and for locked direct threads. HostTalk uses bcrypt and stores no plain passwords.</li>
+        <li>A log of display name changes with the time and the requesting IP address.</li>
+        <li>Technical logs with timestamps, log level, event name, and sometimes a user name, room name, or IP address.</li>
+        <li>Configuration in <code>config.json</code>, including the port, room name, and an optional GIPHY key.</li>
+      </ul>
+
+      <h2>What your browser stores</h2>
+      <ul>
+        <li>A signed session cookie. It is HttpOnly and SameSite=Lax, and it lasts up to 30 days.</li>
+        <li>Your display name, device key, theme choice, sound choice, and per-room draft text in local storage.</li>
+        <li>Recent room markers for unread counts.</li>
+      </ul>
+
+      <h2>What leaves the local network</h2>
+      <ul>
+        <li>Nothing, during normal chat. Messages move between your browser and the host over the local network.</li>
+        <li>GIF search sends the search words to GIPHY through the host, only when someone searches. The API key stays on the host.</li>
+        <li>Link previews fetch the linked page from the host. The page sees the host's address and a generic browser user agent.</li>
+        <li>LocalSend exchanges files with devices on the same network. Those devices see the host's alias, fingerprint, and IP address.</li>
+      </ul>
+
+      <h2>Analytics and advertising</h2>
+      <p>There are none. The project ships no analytics, no advertising code, and no third-party tracking scripts. Fonts are served from the host.</p>
+
+      <h2>How long data stays</h2>
+      <p>The host decides. Messages stay in SQLite until someone clears the room or removes the database. Logs rotate at 2 MB with three backups. Uploaded files stay until the data folder is cleaned. The host can export messages as JSON and clear rooms in the console.</p>
+
+      <h2>Security limits</h2>
+      <p>Traffic inside the local network is plain HTTP. Someone who watches the network sees message text and uploaded files. Password hashes and the session cookie are not readable from the page, but they are not a substitute for network security. Run HostTalk on a network and machine you trust.</p>
+
+      <h2>Your choices</h2>
+      <p>Ask the host of your room to correct or delete your entries. The host removes a name, its messages, and its files from the data folder. The host also controls the room password, the log level, and whether link previews and GIF search are on.</p>
+
+      <h2>Before publishing</h2>
+      <p>Add the contact address for the operator of this deployment and confirm retention practice with them. Review the text with a qualified person for your jurisdiction.</p>
+    </div>
+  </main>
+
+  <footer class="site-foot wrap">
+    <span>HostTalk {{ version }} · Apache 2.0</span>
+    <nav aria-label="Legal">
+      <a href="/">Room</a>
+      <a href="/about">How it works</a>
+      <a href="/terms">Terms</a>
+    </nav>
+  </footer>
+</body>
+</html>

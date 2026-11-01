@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="{{ theme if theme != 'auto' else 'light' }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Terms · HostTalk</title>
+  <meta name="robots" content="noindex">
+  <link rel="icon" href="/static/icons/favicon.ico" sizes="any">
+  <link rel="stylesheet" href="/static/css/tokens.css?v={{ static_v }}">
+  <link rel="stylesheet" href="/static/css/base.css?v={{ static_v }}">
+  <link rel="stylesheet" href="/static/css/marketing.css?v={{ static_v }}">
+</head>
+<body class="site">
+  <header class="site-top">
+    <a class="brand" href="/">
+      <svg class="brand__mark" viewBox="0 0 32 32" aria-hidden="true">
+        <rect width="32" height="32" rx="9" fill="var(--ink)"/>
+        <rect class="mark-room" x="9" y="14" width="14" height="9" rx="1.5"/>
+        <circle class="mark-dot" cx="22" cy="10" r="2.4"/>
+      </svg>
+      <span>HostTalk</span>
+    </a>
+    <nav class="site-nav" aria-label="Site">
+      <a href="/">Open the room</a>
+      <a href="/about">How it works</a>
+      <a href="/privacy">Privacy</a>
+    </nav>
+  </header>
+
+  <main class="prose-page">
+    <p class="draft-banner">Draft for review. Not legal advice.</p>
+    <h1>Terms of use</h1>
+    <p class="lede">HostTalk is software you run on your own machine. The people who write HostTalk do not operate your room, see your messages, or provide a hosted service.</p>
+
+    <div class="prose">
+      <h2>1. What this document covers</h2>
+      <p>These terms apply to your use of the HostTalk application and the room served by the machine that runs it. The code is published under the Apache License 2.0. The license governs your rights to use, copy, and modify the code. These terms describe the practical expectations for running a room.</p>
+
+      <h2>2. Your room, your responsibility</h2>
+      <ul>
+        <li>You choose the machine, the network, the password, and the people you invite.</li>
+        <li>You are responsible for the content people post in your room and for keeping backups of the data folder.</li>
+        <li>Share the password only with people you trust. Anyone with the password and a route to the host reaches the room.</li>
+        <li>Follow the rules that apply where you run the software, including rules about recording, privacy, and workplace communication.</li>
+      </ul>
+
+      <h2>3. No hosted service</h2>
+      <p>There is no account, subscription, or cloud relay. The project does not deliver messages, store files, or recover data for you. Availability depends on the host machine, the local network, and the power supply.</p>
+
+      <h2>4. Data and privacy</h2>
+      <p>The host machine stores messages, files, display names, and technical logs. Read the <a href="/privacy">privacy note</a> for the details. The host controls retention and deletion.</p>
+
+      <h2>5. Third-party services</h2>
+      <p>Two features reach outside the local network when configured: GIF search uses the GIPHY API, and link previews fetch the page someone links. LocalSend transfers files to devices on the same network. Those services and devices have their own terms.</p>
+
+      <h2>6. No warranty</h2>
+      <p>HostTalk is provided as is, without warranties or conditions of any kind, as stated in the Apache License 2.0. The authors are not liable for lost messages, lost files, downtime, or misuse of a room.</p>
+
+      <h2>7. Changes</h2>
+      <p>These terms live in the repository and change with the software. A new version applies when you update and run it.</p>
+
+      <h2>8. Before publishing</h2>
+      <p>Replace this section with a contact address and the legal entity that operates the deployment. Review the text with a qualified person for your jurisdiction.</p>
+    </div>
+  </main>
+
+  <footer class="site-foot wrap">
+    <span>HostTalk {{ version }} · Apache 2.0</span>
+    <nav aria-label="Legal">
+      <a href="/">Room</a>
+      <a href="/about">How it works</a>
+      <a href="/privacy">Privacy</a>
+    </nav>
+  </footer>
+</body>
+</html>
