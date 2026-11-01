@@ -48,10 +48,11 @@ def test_environment_overrides_file(data_dir: Path, monkeypatch):
 def test_redaction_hides_secrets(data_dir: Path):
     config = Config.load(data_dir)
     config.set_password("frontroom")
-    config.update({"giphy_key": "abc123", "localsend": {"pin": "9911"}})
+    config.update({"klipy_key": "abc123", "localsend": {"pin": "9911"}})
     shown = config.redacted()
     assert shown["password_hash"] == "set"
-    assert shown["giphy_key"] == "set"
+    assert shown["klipy_key"] == "set"
+    assert shown["host_password_hash"] == "set"
     assert shown["localsend"]["pin"] == "set"
     assert "secret_key" not in json.dumps(shown) or shown["secret_key"] == "set"
 
