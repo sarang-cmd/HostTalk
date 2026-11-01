@@ -1,0 +1,30 @@
+[Unit]
+Description=HostTalk chat room
+Documentation=https://github.com/sarang-cmd/HostTalk
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=hosttalk
+Group=hosttalk
+WorkingDirectory=/opt/hosttalk
+Environment=PYTHONUNBUFFERED=1
+Environment=HOSTTALK_HOME=/var/lib/hosttalk
+ExecStart=/opt/hosttalk/.venv/bin/python -m hosttalk serve --headless
+Restart=on-failure
+RestartSec=3
+TimeoutStopSec=15
+# Waitress threads handle concurrent streams. A hard cap keeps the host stable.
+LimitNOFILE=4096
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/var/lib/hosttalk
+# LocalSend discovery uses multicast on UDP 53317.
+AmbientCapabilities=
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+
+[Install]
+WantedBy=multi-user.target
