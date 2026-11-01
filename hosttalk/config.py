@@ -7,6 +7,7 @@ owner-only permissions and never stores passwords in plain text.
 
 from __future__ import annotations
 
+import contextlib
 import json
 import os
 import secrets
@@ -139,7 +140,7 @@ class Config:
 
     # ---------------------------------------------------------------- loading
     @classmethod
-    def load(cls, data_dir: Path | None = None, overrides: dict[str, Any] | None = None) -> "Config":
+    def load(cls, data_dir: Path | None = None, overrides: dict[str, Any] | None = None) -> Config:
         load_dotenv(project_root() / ".env", override=False)
         home = Path(data_dir).expanduser() if data_dir else platform_data_dir()
         home.mkdir(parents=True, exist_ok=True)
@@ -183,6 +184,12 @@ class Config:
             self.values["localsend"]["enabled"] = coerce_bool(env["HOSTTALK_LOCALSEND"])
         if env.get("HOSTTALK_LS_PIN"):
             self.values["localsend"]["pin"] = env["HOSTTALK_LS_PIN"].strip()
+        if env.get("HOSTTALK_MAX_UPLOAD_MB"):
+            self.values["max_upload_mb"] = int(env["HOSTTALK_MAX_UPLOAD_MB"])
+        if env.get("HOSTTALK_MAX_MEMBERS"):
+            self.values["max_room_members"] = int(env["HOSTTALK_MAX_MEMBERS"])
+        if env.get("HOSTTALK_THEME"):
+            self.values["default_theme"] = env["HOSTTALK_THEME"].strip().lower()
 
     def _apply_overrides(self, overrides: dict[str, Any]) -> None:
         for key, value in overrides.items():
@@ -221,10 +228,8 @@ class Config:
         try:
             with os.fdopen(fd, "w", encoding="utf-8") as handle:
                 handle.write(payload)
-            try:
+            with contextlib.suppress(OSError):
                 os.chmod(tmp, 0o600)
-            except OSError:
-                pass
             os.replace(tmp, self.path or (self.data_dir / CONFIG_FILENAME))
         finally:
             if os.path.exists(tmp):
