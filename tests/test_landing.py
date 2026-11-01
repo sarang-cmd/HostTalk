@@ -98,6 +98,27 @@ def test_generated_output_stays_out_of_source_control_noise():
     assert names == {"index.html", "assets", "favicon.ico"}
 
 
+def test_the_social_preview_is_the_size_github_shows():
+    """GitHub asks for 1280 by 640. A wrong size gets cropped in feeds."""
+    path = ROOT / "docs" / "social-preview.png"
+    assert path.is_file()
+    header = path.read_bytes()[:24]
+    assert header[:8] == b"\x89PNG\r\n\x1a\n"
+    width = int.from_bytes(header[16:20], "big")
+    height = int.from_bytes(header[20:24], "big")
+    assert (width, height) == (1280, 640)
+    assert path.stat().st_size < 1_000_000
+
+
+def test_the_social_preview_has_a_source_file():
+    """The card is markup, so a wording change is a text edit, not a redraw."""
+    html = (ROOT / "docs" / "social-preview.html").read_text(encoding="utf-8")
+    assert "archivo-var.woff2" in html
+    assert "public-sans-400.woff2" in html
+    assert "A room for the people on your network." in html
+    assert "1280" in html and "640" in html
+
+
 def test_source_tree_has_no_installed_packages():
     ignore = (ROOT / ".gitignore").read_text(encoding="utf-8")
     assert "node_modules/" in ignore
