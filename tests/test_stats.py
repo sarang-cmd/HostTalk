@@ -77,3 +77,42 @@ def test_instance_stats_match_the_store(services):
     assert figures["port"] == services.config.port
     assert figures["uptime"] >= 0
     assert figures["disk_bytes"] >= figures["db_bytes"]
+
+
+def join(client, name="Mara", password="frontroom"):
+    return client.post(
+        "/api/session",
+        json={"name": name, "password": password, "device_key": f"device-{name.lower()}"},
+    )
+
+
+def test_front_page_is_the_landing_page(client):
+    response = client.get("/")
+    assert response.status_code == 200
+    body = response.get_data(as_text=True)
+    assert "A room for the people on your network." in body
+    assert 'href="/room"' in body
+    assert 'href="/stats"' in body
+    assert "data-bootstrap" not in body
+
+
+def test_room_page_carries_the_join_view(client):
+    response = client.get("/room")
+    assert response.status_code == 200
+    body = response.get_data(as_text=True)
+    assert 'id="join-view"' in body
+    assert "data-bootstrap=" in body
+
+
+def test_old_join_link_lands_in_the_room(client):
+    response = client.get("/?join=abc123", follow_redirects=False)
+    assert response.status_code == 302
+    assert response.headers["Location"].endswith("/room?join=abc123")
+
+
+def test_room_invite_url_points_at_the_room(client, services):
+    join(client)
+    room = client.post("/api/rooms", json={"name": "Workshop"}).get_json()["room"]
+    payload = client.post(f"/api/rooms/{room['id']}/invite", json={}).get_json()
+    assert payload["url"].endswith("?join=" + payload["code"])
+    assert "/room?join=" in payload["url"]

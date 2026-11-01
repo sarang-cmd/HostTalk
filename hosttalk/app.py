@@ -5,12 +5,14 @@ from __future__ import annotations
 import json
 import time
 from typing import Any
+from urllib.parse import quote
 
 from flask import (
     Flask,
     Response,
     g,
     jsonify,
+    redirect,
     render_template,
     request,
     send_from_directory,
@@ -83,7 +85,26 @@ def create_app(services: Services) -> Flask:
         }
 
     @app.get("/")
-    def index():
+    def landing():
+        """The front page. Figures come from this instance and render server side."""
+        join_code = request.args.get("join", "")
+        if join_code:
+            return redirect(f"/room?join={quote(join_code)}")
+        try:
+            counts = instance_stats(services)
+        except Exception as exc:
+            services.logger.warning("The front page could not read the store: %s", exc)
+            counts = None
+        return render_template(
+            "landing.html",
+            counts=counts,
+            network=network_summary(request.headers, config.port),
+            local=is_loopback(request.remote_addr or ""),
+            **template_context(),
+        )
+
+    @app.get("/room")
+    def room():
         network = network_summary(request.headers, config.port)
         bootstrap = {
             "version": __version__,
@@ -105,7 +126,7 @@ def create_app(services: Services) -> Flask:
             "join_code": request.args.get("join", ""),
         }
         return render_template(
-            "index.html",
+            "room.html",
             bootstrap=bootstrap,
             **template_context(),
         )
@@ -182,7 +203,7 @@ def create_app(services: Services) -> Flask:
             "name": f"{config.room_name} on HostTalk",
             "short_name": "HostTalk",
             "description": "A room on your local network. No cloud, no accounts.",
-            "start_url": "/",
+            "start_url": "/room",
             "scope": "/",
             "display": "standalone",
             "background_color": "#F2F1EC",

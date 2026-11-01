@@ -119,7 +119,15 @@ def invite_address(host: str, port: int, lan: str | None = None) -> str:
     return f"http://{host}:{port}"
 
 
+ROOM_PATH = "/room"
+
+
 def network_summary(headers: dict[str, str] | None = None, port: int | None = None) -> dict[str, Any]:
+    """Addresses to hand to a guest.
+
+    ``origin`` is the server root. ``address`` adds the room path, so a QR
+    code or a pasted link opens the join screen instead of the front page.
+    """
     headers = headers or {}
     lan = lan_ip()
     resolved_port = port or 7284
@@ -128,7 +136,8 @@ def network_summary(headers: dict[str, str] | None = None, port: int | None = No
         "lan_ip": lan,
         "ssid": wifi_name(),
         "port": resolved_port,
-        "address": address,
+        "origin": address,
+        "address": f"{address}{ROOM_PATH}",
         "hostname": socket.gethostname(),
         "platform": platform.system(),
     }
