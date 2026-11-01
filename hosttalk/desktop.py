@@ -299,9 +299,10 @@ def _controller(runner: Runner) -> int:
 
 
 def _wait_forever(runner: Runner) -> int:
-    print(f"HostTalk {__version__} on {runner.local_url}")
-    print(f"Network: {runner.network_url}")
-    print("Press Ctrl+C to stop.")
+    if sys.stdout:
+        print(f"HostTalk {__version__} on {runner.local_url}")
+        print(f"Network: {runner.network_url}")
+        print("Press Ctrl+C to stop.")
     try:
         while True:
             time.sleep(0.5)
@@ -333,7 +334,7 @@ def main(argv: list[str] | None = None) -> int:
         threading.Timer(0.6, open_room, args=(target,)).start()
 
     try:
-        if args.no_window or not sys.stdout:
+        if args.no_window:
             return _wait_forever(runner)
         try:
             return _controller(runner)
