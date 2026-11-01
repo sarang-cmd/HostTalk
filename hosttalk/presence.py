@@ -17,6 +17,11 @@ class Person:
     name: str
     color: str
     avatar_seed: str
+    role: str = "member"
+    avatar_file: str = ""
+    avatar_updated: float = 0.0
+    badge_icon: str = ""
+    badge_text: str = ""
     connections: int = 0
     last_seen: float = field(default_factory=time.time)
     rooms: set[str] = field(default_factory=set)
@@ -41,11 +46,21 @@ class Presence:
                     name=user["name"],
                     color=color,
                     avatar_seed=user.get("avatar_seed") or user["id"][:8],
+                    role=user.get("role") or "member",
+                    avatar_file=user.get("avatar_file") or "",
+                    avatar_updated=float(user.get("avatar_updated") or 0),
+                    badge_icon=user.get("badge_icon") or "",
+                    badge_text=user.get("badge_text") or "",
                 )
                 self._people[user["id"]] = person
             person.connections += 1
             person.last_seen = time.time()
             person.name = user["name"]
+            person.role = user.get("role") or person.role
+            person.avatar_file = user.get("avatar_file") or ""
+            person.avatar_updated = float(user.get("avatar_updated") or 0)
+            person.badge_icon = user.get("badge_icon") or ""
+            person.badge_text = user.get("badge_text") or ""
             return self._public(person)
 
     def disconnect(self, user_id: str) -> dict[str, Any] | None:
@@ -77,6 +92,26 @@ class Presence:
             person = self._people.get(user_id)
             if person:
                 person.color = color
+
+    def set_role(self, user_id: str, role: str) -> None:
+        with self._lock:
+            person = self._people.get(user_id)
+            if person:
+                person.role = role
+
+    def set_badge(self, user_id: str, icon: str, text: str) -> None:
+        with self._lock:
+            person = self._people.get(user_id)
+            if person:
+                person.badge_icon = icon
+                person.badge_text = text
+
+    def set_avatar(self, user_id: str, filename: str, updated: float) -> None:
+        with self._lock:
+            person = self._people.get(user_id)
+            if person:
+                person.avatar_file = filename
+                person.avatar_updated = updated
 
     def set_rooms(self, user_id: str, rooms: set[str]) -> None:
         with self._lock:
@@ -112,6 +147,14 @@ class Presence:
             "name": person.name,
             "color": person.color,
             "avatar_seed": person.avatar_seed,
+            "avatar_url": (
+                f"/api/avatars/{person.user_id}?v={int(person.avatar_updated)}"
+                if person.avatar_file
+                else ""
+            ),
+            "role": person.role,
+            "badge_icon": person.badge_icon,
+            "badge_text": person.badge_text,
             "online": True,
             "rooms": sorted(person.rooms),
         }
