@@ -73,7 +73,8 @@
         <form class="join__form" id="join-form" novalidate>
           <div class="field" id="name-field">
             <label for="join-name">Your name</label>
-            <input class="input" id="join-name" name="name" autocomplete="nickname" maxlength="32" required placeholder="Mara">
+            <input class="input" id="join-name" name="name" autocomplete="nickname" maxlength="32" placeholder="John Appleseed">
+            <span class="field__hint">Leave it empty and you join as John Appleseed.</span>
           </div>
           <div class="field" id="password-field">
             <label for="join-password">Room password</label>
@@ -183,7 +184,7 @@
         </div>
         <div class="rail__foot">
           <div class="rail__me">
-            <span class="avatar" id="me-avatar" aria-hidden="true">?</span>
+            <span class="avatar-slot" id="me-avatar" aria-hidden="true"></span>
             <div style="min-width:0">
               <div class="rail__me-name" id="me-name">You</div>
               <div class="rail__me-sub" id="me-color-label">In the room</div>
@@ -203,6 +204,10 @@
             <div class="thread__meta" id="thread-meta">Loading messages</div>
           </div>
           <div class="thread__actions">
+            <button class="btn btn--sm" id="pinned-btn" type="button">
+              <svg class="icon icon--sm" aria-hidden="true"><use href="#i-pin"></use></svg>
+              <span>Pinned</span>
+            </button>
             <button class="btn btn--sm" id="room-invite-btn" type="button">
               <svg class="icon icon--sm" aria-hidden="true"><use href="#i-link"></use></svg>
               <span>Invite</span>
@@ -314,6 +319,24 @@
     </div>
   </dialog>
 
+  <dialog class="sheet" id="pinned-dialog" aria-labelledby="pinned-title">
+    <div class="sheet__head">
+      <div>
+        <h2 class="sheet__title" id="pinned-title">Pinned</h2>
+        <p class="sheet__sub">Messages the room keeps in sight. The host and moderators pin.</p>
+      </div>
+      <button class="icon-btn" type="button" data-close-dialog aria-label="Close">
+        <svg class="icon" aria-hidden="true"><use href="#i-close"></use></svg>
+      </button>
+    </div>
+    <div class="sheet__body">
+      <ul class="pinned-list" id="pinned-list"></ul>
+    </div>
+    <div class="sheet__foot">
+      <button class="btn" type="button" data-close-dialog>Done</button>
+    </div>
+  </dialog>
+
   <dialog class="sheet" id="settings-dialog" aria-labelledby="settings-title">
     <div class="sheet__head">
       <div>
@@ -351,6 +374,19 @@
       </section>
 
       <section class="settings-section">
+        <h3>Your picture</h3>
+        <div class="avatar-settings">
+          <span class="avatar-slot" id="settings-avatar-slot" aria-hidden="true"></span>
+          <div class="avatar-settings__actions">
+            <button class="btn btn--sm" id="settings-avatar-pick" type="button">Change picture</button>
+            <button class="btn btn--sm" id="settings-avatar-remove" type="button" hidden>Remove</button>
+          </div>
+        </div>
+        <span class="field__hint" id="settings-avatar-hint">Add a picture, or keep the initials from your name.</span>
+        <input type="file" id="settings-avatar-input" accept="image/png,image/jpeg,image/gif,image/webp,image/avif" hidden>
+      </section>
+
+      <section class="settings-section">
         <h3>Your name</h3>
         <div class="field">
           <label for="settings-name">Display name</label>
@@ -361,6 +397,37 @@
           <span class="field__hint">Names change once an hour. The host keeps a log.</span>
           <p class="form-error" id="settings-name-error" role="alert"></p>
         </div>
+      </section>
+
+      <section class="settings-section">
+        <h3>Your badge</h3>
+        <p class="settings-row__hint">One icon and up to four characters, shown beside your name.</p>
+        <div class="badge-grid" id="badge-icons" role="group" aria-label="Badge icon"></div>
+        <div class="badge-form">
+          <input class="input" id="settings-badge-text" maxlength="4" placeholder="ABC" aria-label="Badge text, four characters">
+          <button class="btn btn--sm" id="settings-badge-save" type="button">Save badge</button>
+          <button class="btn btn--sm" id="settings-badge-clear" type="button">Clear</button>
+        </div>
+        <p class="form-error" id="settings-badge-error" role="alert"></p>
+      </section>
+
+      <section class="settings-section">
+        <h3>Your role</h3>
+        <p class="settings-row__hint" id="settings-role">Member. You look after your own messages.</p>
+      </section>
+
+      <section class="settings-section" id="emoji-section" hidden>
+        <h3>Custom emoji</h3>
+        <p class="settings-row__hint">Only the host adds these. Everyone reacts with them.</p>
+        <ul class="emoji-manage" id="emoji-manage"></ul>
+        <div class="emoji-add">
+          <input class="input" id="emoji-name" maxlength="24" placeholder="name">
+          <input type="file" id="emoji-file" accept="image/png,image/jpeg,image/gif,image/webp" hidden>
+          <button class="btn btn--sm" id="emoji-pick" type="button">Choose picture</button>
+          <button class="btn btn--sm btn--primary" id="emoji-add" type="button">Add emoji</button>
+        </div>
+        <span class="field__hint" id="emoji-file-label">PNG, JPEG, GIF, or WebP up to 512 KB.</span>
+        <p class="form-error" id="emoji-error" role="alert"></p>
       </section>
 
       <section class="settings-section">
@@ -405,6 +472,17 @@
       <div class="field">
         <label for="new-room-name">Room name</label>
         <input class="input" id="new-room-name" maxlength="40" placeholder="Workshop">
+      </div>
+      <div class="field">
+        <label for="new-room-parent">Inside</label>
+        <select class="select" id="new-room-parent">
+          <option value="">Top level</option>
+        </select>
+        <span class="field__hint">A room inside a room follows the outer room. Members of the outer room see it.</span>
+      </div>
+      <div class="field">
+        <label for="new-room-password">Room password, optional</label>
+        <input class="input" id="new-room-password" type="password" autocomplete="new-password" placeholder="Leave empty for an open room">
       </div>
       <p class="form-error" id="new-room-error" role="alert"></p>
       <button class="btn btn--primary" id="new-room-create" type="button" style="margin-top:12px">Create room</button>
@@ -547,6 +625,7 @@
       <symbol id="i-hash" viewBox="0 0 24 24"><path d="M5 9h14M5 15h14M10 4L8 20M16 4l-2 16"/></symbol>
       <symbol id="i-file" viewBox="0 0 24 24"><path d="M6 3.5h7l5 5V20a1 1 0 01-1 1H6a1 1 0 01-1-1V4.5a1 1 0 011-1z"/><path d="M13 3.5V9h5"/></symbol>
       <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M19.5 12a7.5 7.5 0 11-2.2-5.3M19.5 4.5V9h-4.5"/></symbol>
+      <symbol id="i-pin" viewBox="0 0 24 24"><path d="M9 4h6l-1 5 3 3v2h-5v6l-1 1-1-1v-6H5v-2l3-3-1-5z"/></symbol>
       <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3.8l7 3v5.1c0 4.1-3 6.7-7 8.1-4-1.4-7-4-7-8.1V6.8l7-3z"/></symbol>
       <symbol id="i-wifi" viewBox="0 0 24 24"><path d="M3.5 9.5a13 13 0 0117 0M6.5 13a8.5 8.5 0 0111 0M9.5 16.4a4.2 4.2 0 015 0"/><path d="M12 20h.01"/></symbol>
     </defs>
