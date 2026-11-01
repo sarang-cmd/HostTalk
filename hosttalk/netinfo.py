@@ -96,8 +96,7 @@ def is_loopback(value: str | None) -> bool:
     candidate = value.strip()
     if candidate in {"localhost", "::1"}:
         return True
-    if candidate.startswith("::ffff:"):
-        candidate = candidate[7:]
+    candidate = candidate.removeprefix("::ffff:")
     try:
         return ipaddress.ip_address(candidate).is_loopback
     except ValueError:
