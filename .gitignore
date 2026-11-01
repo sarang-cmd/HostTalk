@@ -19,6 +19,7 @@ dist/
 # Tooling
 node_modules/
 .tooling/
+# The built project page is committed on purpose. site/ is not ignored.
 /artifacts/
 screenshots/tmp/
 .DS_Store

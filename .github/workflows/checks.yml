@@ -41,6 +41,28 @@ jobs:
           done
           echo "server did not answer"; exit 1
 
+  page:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: landing/package-lock.json
+
+      - name: Install
+        run: npm ci
+        working-directory: landing
+
+      - name: Build the project page
+        run: npm run build
+        working-directory: landing
+
+      - name: The committed build matches the source
+        run: git diff --exit-code --stat site
+
   docker:
     runs-on: ubuntu-latest
     steps:

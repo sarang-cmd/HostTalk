@@ -1,0 +1,118 @@
+@import "tailwindcss";
+
+@font-face {
+  font-family: "Archivo";
+  src: url("../../static/fonts/archivo-var.woff2") format("woff2-variations");
+  font-weight: 100 900;
+  font-stretch: 62% 125%;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Public Sans";
+  src: url("../../static/fonts/public-sans-400.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Public Sans";
+  src: url("../../static/fonts/public-sans-500.woff2") format("woff2");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Public Sans";
+  src: url("../../static/fonts/public-sans-600.woff2") format("woff2");
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+
+/*
+  The tokens match static/css/tokens.css in the app, with one change:
+  --color-muted is a touch darker so small text holds a 4.5 ratio on paper.
+*/
+@theme {
+  --color-paper: #f1f0eb;
+  --color-paper-strong: #e9e7e0;
+  --color-surface: #faf9f6;
+  --color-surface-2: #eae8e1;
+  --color-ink: #171a18;
+  --color-ink-2: #454a45;
+  --color-muted: #61675f;
+  --color-line: #d6d4ca;
+  --color-line-strong: #b7b5aa;
+  --color-accent: #1d3fa8;
+  --color-accent-ink: #16307f;
+  --color-live: #1f6b45;
+
+  --font-display: "Archivo", "Helvetica Neue", Arial, sans-serif;
+  --font-sans: "Public Sans", "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+  --text-2xs: 0.6875rem;
+  --text-lede: 1.0625rem;
+  --text-h2: clamp(1.65rem, 3vw, 2.35rem);
+  --text-display: clamp(2.45rem, 6.2vw, 4.75rem);
+
+  --radius-card: 12px;
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-paper font-sans text-ink antialiased;
+    font-synthesis-weight: none;
+  }
+
+  h1,
+  h2 {
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-variation-settings: "wdth" 108;
+    letter-spacing: -0.035em;
+    text-wrap: balance;
+  }
+
+  h3 {
+    font-weight: 600;
+    letter-spacing: 0;
+  }
+
+  p {
+    text-wrap: pretty;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
+
+  ::selection {
+    background: color-mix(in srgb, var(--color-accent) 18%, transparent);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
