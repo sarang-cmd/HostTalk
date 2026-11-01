@@ -73,7 +73,7 @@ The 1.x build shipped one room, a five character password check, and a page with
 
 - **A front page.** `/` shows live counts, the room address, and one button into the room. Server rendered, no script.
 - **A project stats page.** `/stats` counts this instance, the code in the build, and the versions under both.
-- **A static project page.** `index.html` at the repository root explains the project for a reader who has not started the server yet.
+- **A static project page.** `site/index.html` explains the project for a reader who has not started the server yet. Source in `landing/`.
 
 ## Screens
 
@@ -133,11 +133,24 @@ Source counts are cached for the life of the process. Instance figures are read 
 
 ![The static project page](static/screenshots/project-page.png)
 
-`index.html` at the repository root is a static page about the project. It carries the same styles as the app, loads no script, and uses relative paths. Open the file from a checkout, or publish the repository root with GitHub Pages. It is not served by Flask, so a running room never depends on it.
+`site/index.html` is a static page about the project. React renders it, Tailwind supplies the styles, and Vite writes the build. The folder holds plain files with hashed asset names and relative paths. Publish `site/` anywhere: GitHub Pages, a bucket, a folder on the host. Flask does not serve it, so a running room never depends on it.
 
 The page covers the product shot, eight features, the three steps a message takes, the two commands to start the server, the stats page, the limits, and the phone and console shots. Every download link points at the latest release.
 
-A test reads the file and checks that every local reference resolves. That catches a broken stylesheet path and a missing screenshot before a publish.
+### Source and build
+
+The source sits in `landing/`. Copy lives in `landing/src/content.ts`, so a wording change touches one file. Components hold layout only.
+
+```bash
+cd landing
+npm install
+npm run dev      # http://localhost:5174, reloads on save
+npm run build    # typechecks, then writes ../site
+```
+
+`npm run build` writes the files in `site/`. Commit the output with the source, so a clone serves the page without a Node toolchain. The build uses `base: "./"`, so the page works from any subfolder.
+
+A test reads `site/index.html` and checks that every reference resolves and that paths stay relative. Another test keeps the demo label in the copy. Both catch a broken publish.
 
 ## How it works
 
@@ -454,7 +467,8 @@ templates/          landing, room, stats, console, about, terms, privacy, error
 deploy/             systemd, launchd, Docker, proxies
 tests/              pytest suite
 docs/               notes on screenshots and the upgrade
-index.html          static landing page for the project, not served by the app
+landing/            React and Tailwind source for the project page
+site/               built pages, committed, served as plain files
 ```
 
 ## Credits
