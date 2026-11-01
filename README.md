@@ -2,7 +2,7 @@
 
 A chat room for one local network. One machine runs the server. Everyone else opens a browser and joins with a name and the room password.
 
-Version 2.1.0, codename Roomtone. Apache 2.0.
+Version 2.2.0, codename Roll call. Apache 2.0.
 
 ![The room at laptop width](static/screenshots/room-desktop.png)
 
@@ -16,6 +16,7 @@ Messages live in a SQLite file on the host machine. They move between the browse
 - [Project page](#project-page)
 - [How it works](#how-it-works)
 - [Run it](#run-it)
+- [Desktop app](#desktop-app)
 - [Set up the room](#set-up-the-room)
 - [Deploy it](#deploy-it)
 - [Settings](#settings)
@@ -39,15 +40,25 @@ The 1.x build shipped one room, a five character password check, and a page with
 - **Invite links.** Each room issues a code with a use limit and a 7 day expiry. The link opens the join page with the code filled in.
 - **Unique colors.** The server hands out a color from a 20 step palette. Every entry meets a 4.5 to 1 contrast ratio against white text, so names stay readable.
 - **Nickname change.** A person renames in the settings sheet. The server enforces a one hour cooldown and writes each change to a log the host reads in the console.
+- **House name.** A blank name joins as John Appleseed. The next guest becomes John Appleseed 2, and so on.
+- **Name tied to the device.** The server remembers the device key, so the same browser returns with the same name, picture, role, and badge.
+- **Profile pictures.** Upload a PNG, JPEG, GIF, WebP, or AVIF up to 3 MB. Initials stay as the fallback.
+- **Roles.** Host, moderator, member. The first person in the room gets the host role. The host console moves roles, including the host role.
+- **Badges.** One icon and up to four characters beside the name. Each person picks their own.
+- **Rooms inside rooms.** Create a room from inside another room. Members of the outer room see it, then enter with the inner password if it has one.
 
 ### Messages
 
 - **Quoting.** Reply attaches the original message as a quote. The quote jumps to the source on click.
-- **Reactions.** Ten emoji, toggled per person. The server keeps the counts.
+- **Reactions.** Any emoji, toggled per person. The picker offers a common set and takes any emoji typed or pasted by hand.
+- **Custom emoji.** The host uploads small pictures as named emoji. Everyone reacts with them.
+- **Pinned messages.** The host and moderators pin a message. The pinned sheet jumps back to it.
+- **Hover toolbar.** Reply, react, edit, pin, and delete sit in a floating row that appears on hover, with a divider before delete.
+- **Sent tone.** A short synthesized swoosh plays when a message leaves. Nothing licensed ships with the app.
 - **Edit and delete.** Authors edit or delete their own text. Delete leaves a quiet placeholder so the thread keeps its shape.
 - **Search.** The search sheet queries the rooms you belong to and jumps to the match.
 - **Link previews.** The server fetches a page title, description, and image. Private and loopback addresses are refused before any request leaves the machine.
-- **GIF search.** GIPHY search runs through the host, so the API key stays on the host. Search is off until a key is set.
+- **GIF search.** KLIPY search runs through the host, so the API key stays on the host. Media loads straight from KLIPY. Search is off until a key is set.
 - **Typing and presence.** Typing pings and presence changes arrive over one server-sent event stream.
 
 ### Files
@@ -60,7 +71,10 @@ The 1.x build shipped one room, a five character password check, and a page with
 ### Host tools
 
 - **A real console.** `/console` shows checks, people, rooms, logs, settings, LocalSend state, backups, and a stop button. It runs in a browser and replaces the terminal.
-- **Password change and reset.** The host changes the room password in the console or with one command. Both paths use bcrypt and store no plain text.
+- **Host sign in.** A host name and a host password, separate from the join password. Both change on the hosting machine only.
+- **Room controls.** Lock the room to new people, set read only, set slow mode, and post a notice above the thread.
+- **Role control.** The people table carries a role menu for every account.
+- **Password change and reset.** The host changes the join password in the console or with one command. Both paths use bcrypt and store no plain text.
 - **Cleaner logs.** JSON lines, level filtering in the console, rotation at 2 MB with three backups, and a download button.
 - **Configurable port.** The default is 7284. The host edits the port in the console or in `config.json`. Port 6767 is gone.
 
@@ -227,6 +241,8 @@ deploy\hosttalk.bat
 
 The batch file creates the virtualenv on first run, then starts the server and opens the browser.
 
+The packaged builds from the Actions tab start the same way, with the desktop window and the app style browser. Download `HostTalk.exe` from the latest release.
+
 ### macOS and Linux
 
 ```bash
@@ -238,6 +254,20 @@ python3 -m venv .venv
 ```
 
 The server prints a local address, a network address, and the console URL. It opens a browser unless `--headless` is set.
+
+For the window, run `.venv/bin/python desktop.py`, or `hosttalk app`. The macOS release ships `HostTalk.app`. The Linux release ships a `HostTalk` binary.
+
+## Desktop app
+
+`desktop.py` starts the server in a thread, opens the room in an app style window, and shows a control window.
+
+- **Control window.** The room name, the local address, the network address, a copy button, the console button, and a live count of people here.
+- **App window.** Chrome, Edge, Brave, or Chromium opens the room without tabs or an address bar. Other machines fall back to the default browser.
+- **Port fallback.** If the chosen port is busy, the app tries the next seven and shows the one it used.
+- **Closing.** The window asks before it stops the room. The data folder is untouched.
+- **No Tk.** On a machine without Tk, the app runs as a server and opens the browser.
+
+Builds run in `.github/workflows/build.yml` on a tag. Each build produces an app and a server binary. The icon comes from `icon.ico` on Windows, `HostTalk.icns` on macOS, and `static/icons/icon-512.png` on Linux.
 
 ### Container
 
@@ -252,7 +282,7 @@ The compose file sets `network_mode: host`, because multicast does not cross the
 
 First run has no password. Two paths, same result.
 
-**Browser.** Open `http://127.0.0.1:7284/console` on the host. The first screen asks for a room name, a password, a port, and whether to look for LocalSend devices. Save. The console opens.
+**Browser.** Open `http://127.0.0.1:7284/console` on the host. The first screen asks for a room name, a host name, a host password, a join password, a port, and whether to look for LocalSend devices. Save. The console opens.
 
 **Terminal.** One command, no prompts:
 
@@ -260,7 +290,7 @@ First run has no password. Two paths, same result.
 .venv/bin/python -m hosttalk setup --password "frontroom" --room "Front room" --port 7284
 ```
 
-Then start the server and open the console. The console shows a check list. Green means fine. Amber means a setting needs attention, usually the GIPHY key or a Wi-Fi name the system does not report.
+Then start the server and open the console. The console shows a check list. Green means fine. Amber means a setting needs attention, usually the KLIPY key or a Wi-Fi name the system does not report.
 
 Change the password later with the console form, or:
 
@@ -308,7 +338,13 @@ Settings live in `config.json` inside the data folder, mode 0600. The console ed
 | Default theme | auto | yes | |
 | Log level | INFO | yes | `LOG_LEVEL` |
 | Link previews | on | yes | |
-| GIF search | on, no key | yes | `GIPHY_API_KEY` |
+| GIF search | on, no key | yes | `KLIPY_API_KEY` |
+| Host name | host | yes, host machine only | |
+| Host password | set on first run | yes, host machine only | |
+| Room locked | off | yes | |
+| Read only | off | yes | |
+| Slow mode | 0 seconds | yes | |
+| Notice | empty | yes | |
 | LocalSend | on | yes | `HOSTTALK_LOCALSEND`, `HOSTTALK_LS_PIN` |
 | Console local only | on | yes | `HOSTTALK_CONSOLE_LOCAL_ONLY` |
 | Data folder | platform default | CLI | `HOSTTALK_HOME` |
@@ -320,6 +356,7 @@ Changing the port or the bind address asks for a restart. The console says so an
 ```
 hosttalk serve [--port 7284] [--host 0.0.0.0] [--data-dir PATH]
                [--headless] [--log-level INFO] [--no-localsend] [--reload]
+hosttalk app [--port 7284] [--data-dir PATH] [--no-window] [--no-browser]
 hosttalk setup [--password ...] [--room ...] [--port ...] [--non-interactive]
 hosttalk config show | path | get KEY | set KEY VALUE
 hosttalk reset-password [--password ...]
@@ -339,7 +376,18 @@ All routes answer JSON with an `ok` field. Cookies carry the session. Every path
 | POST | `/api/setup` | First run, host machine only |
 | POST | `/api/session` | Join with a name and password |
 | GET | `/api/me` | Current person, rooms, palette |
-| PATCH | `/api/me` | Rename, change color |
+| PATCH | `/api/me` | Rename, change color, set a badge |
+| POST | `/api/me/avatar` | Upload a profile picture |
+| DELETE | `/api/me/avatar` | Remove a profile picture |
+| GET | `/api/avatars/<user_id>` | Profile picture |
+| GET | `/api/emoji` | Custom emoji |
+| POST | `/api/emoji` | Add custom emoji, host only |
+| DELETE | `/api/emoji/<id>` | Remove custom emoji, host only |
+| POST | `/api/people/<id>/role` | Change a role, host only |
+| POST | `/api/messages/<id>/pin` | Pin or unpin a message |
+| GET | `/api/rooms/<id>/pinned` | Pinned messages |
+| POST | `/api/rooms/<id>/enter` | Enter a nested room |
+| POST | `/api/host/credentials` | Host name and host password, host machine only |
 | GET | `/api/events` | Server-sent event stream |
 | GET | `/api/rooms` | Rooms for the signed in person |
 | POST | `/api/rooms` | Create a group room |
@@ -433,7 +481,7 @@ The suite covers config validation, store behaviour, the HTTP surface, the passw
 
 **LocalSend finds nothing.** Multicast needs a flat network. Guest Wi-Fi and client isolation block it. The UDP port is 53317.
 
-**GIF search says it needs a key.** Get a free key at `developers.giphy.com`, paste it into the console, save. The key stays on the host.
+**GIF search says it needs a key.** Get a key at `partner.klipy.com`, paste it into the console, save. The key stays on the host.
 
 **The console refuses the host machine.** With `console_local_only` on, the console answers only loopback requests. Open it at `127.0.0.1`, not the network address.
 
@@ -456,7 +504,7 @@ hosttalk/           server package
   events.py         server-sent event broker
   localsend.py      discovery and transfer protocol
   previews.py       guarded link previews
-  gifs.py           GIPHY client with cache
+  gifs.py           KLIPY client with cache
   presence.py       who is here
   stats.py          counts for the stats page and the front page
 static/
