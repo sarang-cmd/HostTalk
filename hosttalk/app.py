@@ -23,6 +23,7 @@ from .auth import COLOR_GRID
 from .config import project_root
 from .netinfo import is_loopback, network_summary
 from .services import Services
+from .stats import human_bytes, human_duration, instance_stats, runtime_stats, source_stats
 from .version import __version__
 
 
@@ -74,6 +75,10 @@ def create_app(services: Services) -> Flask:
 
     for blueprint in (api_session.bp, api_chat.bp, api_files.bp, api_host.bp):
         app.register_blueprint(blueprint)
+
+    app.add_template_filter(human_bytes, "filesize")
+    app.add_template_filter(human_duration, "duration")
+    app.add_template_filter(lambda value: f"{int(value):,}", "grouped")
 
     def template_context() -> dict[str, Any]:
         return {
@@ -145,6 +150,27 @@ def create_app(services: Services) -> Flask:
         return render_template(
             "about.html",
             network=network_summary(request.headers, config.port),
+            **template_context(),
+        )
+
+    @app.get("/stats")
+    def stats_page():
+        """What this install is made of. Public, aggregate, no message text."""
+        try:
+            counts = instance_stats(services)
+        except Exception as exc:
+            services.logger.warning("The stats page could not read the store: %s", exc)
+            counts = None
+        rules = [rule for rule in app.url_map.iter_rules() if rule.endpoint != "static"]
+        api_rules = sum(1 for rule in rules if rule.rule.startswith("/api/"))
+        return render_template(
+            "stats.html",
+            counts=counts,
+            source=source_stats(),
+            runtime=runtime_stats(),
+            routes={"total": len(rules), "api": api_rules, "pages": len(rules) - api_rules},
+            network=network_summary(request.headers, config.port),
+            local=is_loopback(request.remote_addr or ""),
             **template_context(),
         )
 

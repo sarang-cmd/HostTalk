@@ -116,3 +116,30 @@ def test_room_invite_url_points_at_the_room(client, services):
     payload = client.post(f"/api/rooms/{room['id']}/invite", json={}).get_json()
     assert payload["url"].endswith("?join=" + payload["code"])
     assert "/room?join=" in payload["url"]
+
+
+def test_stats_page_renders_every_table(client, services):
+    join(client)
+    response = client.get("/stats")
+    assert response.status_code == 200
+    body = response.get_data(as_text=True)
+    assert "What this server is made of." in body
+    assert "This instance" in body
+    assert "The code" in body
+    assert "The build" in body
+    assert "Bundled libraries" in body
+    assert "Server package" in body
+    assert "People here now" in body
+    assert "Database schema" in body
+
+
+def test_stats_page_reports_a_missing_store(client, services, monkeypatch):
+    def broken():
+        raise RuntimeError("database is closed")
+
+    monkeypatch.setattr(services.store, "stats", broken)
+    response = client.get("/stats")
+    assert response.status_code == 200
+    body = response.get_data(as_text=True)
+    assert "The database did not answer" in body
+    assert "The code" in body
