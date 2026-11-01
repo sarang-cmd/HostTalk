@@ -1,6 +1,6 @@
 name: Build HostTalk
 
-# Builds the desktop app and the server binary for Windows.
+# Builds a desktop app and a server binary for Windows, macOS, and Linux.
 # Runs on a tag push, or by hand from the Actions tab.
 
 on:
@@ -52,3 +52,126 @@ jobs:
           path: |
             dist/HostTalk.exe
             dist/HostTalk-server.exe
+
+
+  build-macos:
+    runs-on: macos-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          pip install pyinstaller
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+
+      # PyInstaller wants .icns on macOS, and macOS ships the tools to build one.
+      - name: Build the icon
+        run: |
+          mkdir -p HostTalk.iconset
+          for size in 16 32 128 256 512; do
+            sips -z $size $size static/icons/icon-512.png --out "HostTalk.iconset/icon_${size}x${size}.png" > /dev/null
+            double=$((size * 2))
+            sips -z $double $double static/icons/icon-512.png --out "HostTalk.iconset/icon_${size}x${size}@2x.png" > /dev/null
+          done
+          iconutil -c icns HostTalk.iconset -o HostTalk.icns
+
+      - name: Build the app
+        run: |
+          pyinstaller --noconfirm --windowed --name HostTalk \
+          --icon HostTalk.icns \
+          --osx-bundle-identifier org.hosttalk.app \
+          --add-data "static:static" \
+          --add-data "templates:templates" \
+          --hidden-import waitress \
+          desktop.py
+
+      - name: Build the server binary
+        run: |
+          pyinstaller --noconfirm --onefile --console --name HostTalk-server \
+          --add-data "static:static" \
+          --add-data "templates:templates" \
+          --hidden-import waitress \
+          server.py
+
+      - name: Pack the app
+        run: |
+          ditto -c -k --sequesterRsrc --keepParent dist/HostTalk.app HostTalk-macos.zip
+          cp dist/HostTalk-server HostTalk-server
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: HostTalk-macos
+          path: |
+            HostTalk-macos.zip
+            HostTalk-server
+
+
+  build-linux:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          pip install pyinstaller
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+
+      # The window needs Tk. Without it the app still runs, in a browser.
+      - name: Build the app
+        run: |
+          pyinstaller --noconfirm --onefile --name HostTalk \
+          --add-data "static:static" \
+          --add-data "templates:templates" \
+          --hidden-import waitress \
+          desktop.py
+
+      - name: Build the server binary
+        run: |
+          pyinstaller --noconfirm --onefile --name HostTalk-server \
+          --add-data "static:static" \
+          --add-data "templates:templates" \
+          --hidden-import waitress \
+          server.py
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: HostTalk-linux
+          path: |
+            dist/HostTalk
+            dist/HostTalk-server
+
+
+  publish:
+    # Attach the three builds to the GitHub release for this tag.
+    needs: [build-windows, build-macos, build-linux]
+    if: startsWith(github.ref, "refs/tags/")
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: release
+
+      - name: Zip each build
+        run: |
+          cd release
+          for name in *; do
+            if [ -d "$name" ]; then (cd "$name" && zip -r "../$name.zip" .); fi
+          done
+          ls -la
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: release/*.zip
