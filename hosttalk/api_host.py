@@ -10,8 +10,11 @@ from flask import Blueprint, Response, jsonify, request, session
 
 from .api_common import fail, host_required, ok, payload, public_person, services
 from .auth import (
+    ROLE_LABELS,
+    ROLES,
     RateLimiter,
     ValidationError,
+    clean_role,
     client_ip,
     is_loopback,
 )
@@ -41,19 +44,22 @@ def host_login():
     allowed, retry = limiter.check(key)
     if not allowed:
         return fail("Too many attempts. Wait a moment.", 429, retry_after=retry)
-    password = str(payload().get("password") or "")
-    if not config.verify_password(password):
+    data = payload()
+    username = str(data.get("username") or config.host_user)
+    password = str(data.get("password") or "")
+    if not config.verify_host_user(username) or not config.verify_host_password(password):
         limiter.hit(key, failed=True)
         svc.logger.warning(
             "Host console login failed", extra={"event": "host.login_failed", "ip": client_ip()}
         )
-        return fail("Wrong password", 401, field="password")
+        return fail("Wrong host name or password", 401, field="password")
     limiter.reset(key)
     session["host_ok"] = True
     session.permanent = True
     svc.logger.info("Host console signed in", extra={"event": "host.login", "ip": client_ip()})
     return ok(
         signed_in=True,
+        host_user=config.host_user,
         setup_complete=config.setup_complete,
         local=is_loopback(client_ip()),
     )
@@ -116,8 +122,8 @@ def update_settings():
     restart_keys = {"port", "bind"}
     restart_required = any(key in data and str(data[key]) != str(config.values.get(key)) for key in restart_keys)
 
-    if "giphy_key" in data:
-        data["giphy_key"] = str(data["giphy_key"]).strip()[:80]
+    if "klipy_key" in data:
+        data["klipy_key"] = str(data["klipy_key"]).strip()[:120]
     if "default_theme" in data and data["default_theme"] not in {"auto", "light", "dark"}:
         return fail("Theme must be auto, light, or dark", 400, field="default_theme")
     try:
@@ -130,12 +136,25 @@ def update_settings():
     if "room_name" in applied:
         svc.store.ensure_room("main", config.room_name, kind="main")
         svc.broker.broadcast("server.updated", {"room_name": config.room_name})
+    rule_keys = {"room_locked", "read_only", "slow_mode_seconds", "notice_text"}
+    if rule_keys & set(applied):
+        svc.broker.broadcast(
+            "server.updated",
+            {
+                "rules": {
+                    "room_locked": bool(config.values.get("room_locked")),
+                    "read_only": bool(config.values.get("read_only")),
+                    "slow_mode_seconds": int(config.values.get("slow_mode_seconds") or 0),
+                    "notice_text": config.values.get("notice_text") or "",
+                }
+            },
+        )
     if "log_level" in applied:
         svc.logger.setLevel(config.log_level)
         for handler in svc.logger.handlers:
             handler.setLevel(config.log_level)
-    if "giphy_key" in applied:
-        svc.gifs.api_key = config.giphy_key
+    if "klipy_key" in applied:
+        svc.gifs.api_key = config.klipy_key
     if "gifs_enabled" in applied:
         svc.gifs.enabled = bool(config.values["gifs_enabled"])
     if "localsend" in applied:
@@ -153,11 +172,36 @@ def update_settings():
     )
 
 
+@bp.post("/api/host/credentials")
+@host_required
+def change_credentials():
+    """The host name and host password change on the hosting machine only."""
+    svc = services()
+    config = svc.config
+    if not is_loopback(client_ip()):
+        return fail("Change host credentials on the machine that runs HostTalk", 403)
+    data = payload()
+    current = str(data.get("current") or "")
+    if not config.verify_host_password(current):
+        return fail("Current host password is wrong", 401, field="current")
+    try:
+        if str(data.get("host_user") or "").strip():
+            config.set_host_user(str(data["host_user"]))
+        if str(data.get("new") or ""):
+            config.set_host_password(str(data["new"]))
+    except Exception as exc:
+        return fail(str(exc), 400, field="new")
+    svc.logger.info("Host credentials changed", extra={"event": "host.credentials", "ip": client_ip()})
+    return ok(host_user=config.host_user)
+
+
 @bp.post("/api/host/password")
 @host_required
 def change_password():
     svc = services()
     config = svc.config
+    if not is_loopback(client_ip()):
+        return fail("Change the room password on the machine that runs HostTalk", 403)
     data = payload()
     current = str(data.get("current") or "")
     new = str(data.get("new") or "")
@@ -288,6 +332,7 @@ def host_people():
         item = public_person(user, svc)
         item["online"] = user["id"] in online
         item["last_nick_at"] = user.get("last_nick_at")
+        item["role"] = user.get("role") or "member"
         item["rooms"] = [
             room["name"]
             for room in svc.store.list_rooms_for(user["id"])
@@ -295,7 +340,41 @@ def host_people():
         ]
         people.append(item)
     nickname_log = svc.store.nickname_log(limit=50)
-    return ok(people=people, nickname_log=nickname_log, palette=svc.presence.palette())
+    return ok(
+        people=people,
+        nickname_log=nickname_log,
+        palette=svc.presence.palette(),
+        roles=[{"id": role, "label": ROLE_LABELS[role]} for role in ROLES],
+    )
+
+
+@bp.post("/api/host/users/<user_id>/role")
+@host_required
+def set_user_role(user_id: str):
+    """The console moves every role, including the host role."""
+    svc = services()
+    target = svc.store.get_user(user_id)
+    if not target:
+        return fail("That person is not here", 404)
+    try:
+        role = clean_role(payload().get("role"), allowed=ROLES)
+    except ValidationError as exc:
+        return fail(exc.message, exc.status, field=exc.field)
+    updated = svc.store.set_user_role(target["id"], role) or target
+    svc.presence.set_role(target["id"], role)
+    public = public_person(updated, svc)
+    svc.broker.broadcast("user.updated", {"user": public, "user_id": updated["id"], "role": role})
+    svc.broker.broadcast(
+        "presence.changed",
+        {"people": svc.presence.snapshot(), "count": svc.presence.count()},
+    )
+    svc.logger.info(
+        "Console role change: %s is %s",
+        updated["name"],
+        role,
+        extra={"event": "host.role", "user": updated["name"], "detail": role, "ip": client_ip()},
+    )
+    return ok(user=public)
 
 
 @bp.get("/api/host/theme-preview")
