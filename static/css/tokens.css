@@ -1,0 +1,162 @@
+@font-face {
+  font-family: "Archivo";
+  src: url("/static/fonts/archivo-var.woff2") format("woff2-variations");
+  font-weight: 100 900;
+  font-stretch: 62% 125%;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Public Sans";
+  src: url("/static/fonts/public-sans-400.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Public Sans";
+  src: url("/static/fonts/public-sans-500.woff2") format("woff2");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Public Sans";
+  src: url("/static/fonts/public-sans-600.woff2") format("woff2");
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Noto Emoji";
+  src: url("/static/fonts/noto-emoji-400.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+200D, U+2600-27BF, U+2B00-2BFF, U+1F000-1FAFF, U+FE0F;
+}
+
+:root {
+  color-scheme: light;
+
+  /* Surfaces */
+  --paper: #f1f0eb;
+  --paper-strong: #e9e7e0;
+  --surface: #faf9f6;
+  --surface-2: #eae8e1;
+  --surface-3: #e0ded6;
+
+  /* Text */
+  --ink: #171a18;
+  --ink-2: #454a45;
+  --muted: #6a706a;
+  --faint: #8a908a;
+
+  /* Lines */
+  --line: #d6d4ca;
+  --line-strong: #b7b5aa;
+
+  /* Accent */
+  --accent: #1d3fa8;
+  --accent-ink: #16307f;
+  --accent-wash: #e2e6f5;
+  --accent-on: #ffffff;
+
+  /* Status */
+  --live: #1f6b45;
+  --live-wash: #e2ece4;
+  --danger: #a32a22;
+  --danger-wash: #f6e4e1;
+  --warn: #8a5a0f;
+  --warn-wash: #f4ead6;
+
+  /* Type */
+  --font-display: "Archivo", "Noto Emoji", "Helvetica Neue", Arial, sans-serif;
+  --font-ui: "Public Sans", "Noto Emoji", "Helvetica Neue", Arial, sans-serif;
+  --display-wght: 600;
+  --display-wdth: 108%;
+  --text-xs: 0.75rem;
+  --text-sm: 0.8125rem;
+  --text-base: 1rem;
+  --text-md: 1.0625rem;
+  --text-lg: 1.25rem;
+  --text-xl: 1.5rem;
+  --text-2xl: clamp(1.75rem, 2.4vw, 2.25rem);
+  --text-3xl: clamp(2.25rem, 4.2vw, 3.5rem);
+  --text-4xl: clamp(2.75rem, 6vw, 4.75rem);
+
+  /* Space */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+  --space-8: 64px;
+  --space-9: 96px;
+
+  /* Shape */
+  --radius-sm: 4px;
+  --radius: 8px;
+  --radius-lg: 12px;
+  --radius-pill: 999px;
+
+  /* Elevation: used only for overlays */
+  --shadow-overlay: 0 24px 60px rgba(23, 26, 24, 0.18), 0 2px 8px rgba(23, 26, 24, 0.08);
+  --shadow-drawer: 0 12px 40px rgba(23, 26, 24, 0.16);
+
+  /* Layout */
+  --rail-w: 264px;
+  --people-w: 288px;
+  --topbar-h: 60px;
+  --content-max: 1180px;
+
+  --ease: cubic-bezier(0.2, 0.7, 0.3, 1);
+  --dur-fast: 120ms;
+  --dur: 180ms;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  --paper: #101311;
+  --paper-strong: #0b0e0c;
+  --surface: #171b18;
+  --surface-2: #1e2420;
+  --surface-3: #262d28;
+
+  --ink: #eceee6;
+  --ink-2: #c2c6bd;
+  --muted: #939a92;
+  --faint: #7a817a;
+
+  --line: #2b322c;
+  --line-strong: #3d463f;
+
+  --accent: #9aacff;
+  --accent-ink: #c3ceff;
+  --accent-wash: #1d2544;
+  --accent-on: #10131f;
+
+  --live: #7cc79a;
+  --live-wash: #16281d;
+  --danger: #f09a92;
+  --danger-wash: #2b1a18;
+  --warn: #e0b877;
+  --warn-wash: #2a2113;
+
+  --shadow-overlay: 0 24px 60px rgba(0, 0, 0, 0.55), 0 2px 8px rgba(0, 0, 0, 0.4);
+  --shadow-drawer: 0 12px 40px rgba(0, 0, 0, 0.5);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --dur-fast: 0ms;
+    --dur: 0ms;
+  }
+}
