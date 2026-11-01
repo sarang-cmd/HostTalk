@@ -5,7 +5,6 @@ from __future__ import annotations
 import pytest
 
 from hosttalk.auth import (
-    ALLOWED_REACTIONS,
     COLOR_GRID,
     RateLimiter,
     ValidationError,
@@ -59,10 +58,14 @@ def test_palette_contrast_stays_readable():
         assert luminance_contrast(color) >= 4.5
 
 
-def test_reactions_are_limited_to_the_allowed_set():
-    assert clean_emoji(ALLOWED_REACTIONS[0]) == ALLOWED_REACTIONS[0]
-    with pytest.raises(ValidationError):
-        clean_emoji("🚀")
+def test_any_emoji_is_a_valid_reaction():
+    assert clean_emoji("👍") == "👍"
+    assert clean_emoji("🚀") == "🚀"
+    assert clean_emoji("🧑‍🚀") == "🧑‍🚀"
+    assert clean_emoji("custom:e_abc123") == "custom:e_abc123"
+    for text in ("", "hello", "abc👍", "x" * 40):
+        with pytest.raises(ValidationError):
+            clean_emoji(text)
 
 
 def test_rate_limiter_locks_after_failures():
