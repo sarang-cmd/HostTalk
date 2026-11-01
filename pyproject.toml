@@ -16,3 +16,6 @@ ignore = [
 testpaths = ["tests"]
 addopts = "-q"
 filterwarnings = ["error::DeprecationWarning"]
+# The console script does not put the working directory on sys.path the way
+# `python -m pytest` does. CI runs `pytest -q`, so name the root explicitly.
+pythonpath = ["."]
