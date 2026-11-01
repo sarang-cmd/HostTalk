@@ -12,6 +12,8 @@ document.addEventListener("DOMContentLoaded", () => {
   $("setup-form").addEventListener("submit", onSetup);
   $("settings-form").addEventListener("submit", onSaveSettings);
   $("password-form").addEventListener("submit", onChangePassword);
+  $("controls-form").addEventListener("submit", onSaveControls);
+  $("host-form").addEventListener("submit", onSaveHost);
   $("logs-refresh").addEventListener("click", () => loadLogs());
   $("log-level").addEventListener("change", () => loadLogs());
   $("refresh-all").addEventListener("click", () => loadSummary());
@@ -71,6 +73,8 @@ async function onSetup(event) {
   const payload = {
     room_name: $("setup-room").value.trim(),
     password: $("setup-password").value,
+    host_user: $("setup-host-user").value.trim(),
+    host_password: $("setup-host-password").value,
     port: Number($("setup-port").value),
     bind: $("setup-bind").value,
     localsend: $("setup-localsend").checked,
@@ -80,7 +84,15 @@ async function onSetup(event) {
     return;
   }
   if (payload.password.length < 4) {
-    showError("setup-error", "Use at least 4 characters for the password.");
+    showError("setup-error", "Use at least 4 characters for the join password.");
+    return;
+  }
+  if (!payload.host_user) {
+    showError("setup-error", "Give the host a name.");
+    return;
+  }
+  if (payload.host_password.length < 6) {
+    showError("setup-error", "Use at least 6 characters for the host password.");
     return;
   }
   submit.disabled = true;
@@ -88,7 +100,10 @@ async function onSetup(event) {
   try {
     const data = await api.post("/api/setup", payload);
     if (data.localsend !== undefined) {
-      await api.post("/api/host/session", { password: payload.password });
+      await api.post("/api/host/session", {
+        username: payload.host_user,
+        password: payload.host_password,
+      });
       await api.patch("/api/host/settings", { localsend: { enabled: Boolean(payload.localsend) } });
     }
     const currentPort = Number(window.location.port || 80);
@@ -112,7 +127,10 @@ async function onLogin(event) {
   showError("login-error", "");
   submit.disabled = true;
   try {
-    await api.post("/api/host/session", { password: $("login-password").value });
+    await api.post("/api/host/session", {
+      username: $("login-user").value.trim(),
+      password: $("login-password").value,
+    });
     await loadSummary(true);
   } catch (error) {
     showError("login-error", error.message);
@@ -188,9 +206,15 @@ function renderSettings() {
   $("set-ls-alias").value = config.localsend.alias || "HostTalk";
   $("set-ls-pin").value = "";
   $("set-ls-pin").placeholder = config.localsend.pin === "set" ? "Set. Type a new PIN." : "Optional";
-  $("set-giphy").value = "";
-  $("set-giphy").placeholder = config.giphy_key === "set" ? "Set. Type a new key." : "Not set";
+  $("set-klipy").value = "";
+  $("set-klipy").placeholder = config.klipy_key === "set" ? "Set. Type a new key." : "Not set";
   $("restart-pill").hidden = true;
+  $("set-locked").checked = Boolean(config.room_locked);
+  $("set-read-only").checked = Boolean(config.read_only);
+  $("set-slow-mode").value = Number(config.slow_mode_seconds || 0);
+  $("set-notice").value = config.notice_text || "";
+  const hostUser = $("host-user");
+  if (hostUser && document.activeElement !== hostUser) hostUser.value = config.host_user || "host";
 }
 
 async function onSaveSettings(event) {
@@ -216,8 +240,8 @@ async function onSaveSettings(event) {
   };
   const pin = $("set-ls-pin").value.trim();
   if (pin) patch.localsend.pin = pin;
-  const giphy = $("set-giphy").value.trim();
-  if (giphy) patch.giphy_key = giphy;
+  const klipy = $("set-klipy").value.trim();
+  if (klipy) patch.klipy_key = klipy;
   try {
     const data = await api.patch("/api/host/settings", patch);
     status.textContent = data.restart_required
@@ -225,6 +249,47 @@ async function onSaveSettings(event) {
       : "Saved.";
     status.dataset.tone = data.restart_required ? "warn" : "";
     $("restart-pill").hidden = !data.restart_required;
+    await loadSummary();
+  } catch (error) {
+    status.textContent = error.message;
+    status.dataset.tone = "error";
+  }
+}
+
+async function onSaveControls(event) {
+  event.preventDefault();
+  const status = $("controls-status");
+  status.textContent = "Saving";
+  status.dataset.tone = "";
+  try {
+    await api.patch("/api/host/settings", {
+      room_locked: $("set-locked").checked,
+      read_only: $("set-read-only").checked,
+      slow_mode_seconds: Number($("set-slow-mode").value || 0),
+      notice_text: $("set-notice").value.trim(),
+    });
+    status.textContent = "Saved.";
+    await loadSummary();
+  } catch (error) {
+    status.textContent = error.message;
+    status.dataset.tone = "error";
+  }
+}
+
+async function onSaveHost(event) {
+  event.preventDefault();
+  const status = $("host-status");
+  status.textContent = "Saving";
+  status.dataset.tone = "";
+  try {
+    const data = await api.post("/api/host/credentials", {
+      current: $("host-current").value,
+      host_user: $("host-user").value.trim(),
+      new: $("host-new").value,
+    });
+    $("host-current").value = "";
+    $("host-new").value = "";
+    status.textContent = `Saved. Sign in as ${data.host_user}.`;
     await loadSummary();
   } catch (error) {
     status.textContent = error.message;
@@ -244,7 +309,7 @@ async function onChangePassword(event) {
     });
     $("pw-current").value = "";
     $("pw-new").value = "";
-    status.textContent = "Password changed.";
+    status.textContent = "Join password changed.";
   } catch (error) {
     status.textContent = error.message;
     status.dataset.tone = "error";
@@ -255,9 +320,14 @@ async function loadPeople() {
   const body = $("people-body");
   try {
     const data = await api.get("/api/host/people");
+    const roles = data.roles || [
+      { id: "host", label: "Host" },
+      { id: "moderator", label: "Moderator" },
+      { id: "member", label: "Member" },
+    ];
     $("people-count").textContent = `${data.people.filter((person) => person.online).length} here of ${data.people.length}`;
     if (!data.people.length) {
-      body.innerHTML = '<tr><td colspan="4" class="empty-line">Nobody has joined yet.</td></tr>';
+      body.innerHTML = '<tr><td colspan="5" class="empty-line">Nobody has joined yet.</td></tr>';
       return;
     }
     body.innerHTML = data.people
@@ -266,12 +336,37 @@ async function loadPeople() {
           <td><span class="table__name"><span class="status-dot" data-online="${person.online}"></span>${escapeText(person.name)}</span></td>
           <td>${person.online ? "Now" : "Away"}</td>
           <td class="table__muted">${escapeText((person.rooms || []).join(", ") || "Main room")}</td>
+          <td>
+            <select class="select" data-role-user="${person.id}" aria-label="Role for ${escapeText(person.name)}" style="min-height:32px;padding:4px 8px;font-size:12px">
+              ${roles
+                .map(
+                  (role) =>
+                    `<option value="${role.id}"${person.role === role.id ? " selected" : ""}>${escapeText(role.label)}</option>`
+                )
+                .join("")}
+            </select>
+          </td>
           <td class="table__actions">
             ${person.online ? `<button class="btn btn--sm" type="button" data-disconnect="${person.id}">End session</button>` : ""}
           </td>
         </tr>`
       )
       .join("");
+    body.querySelectorAll("[data-role-user]").forEach((select) => {
+      select.addEventListener("change", async () => {
+        const person = data.people.find((entry) => entry.id === select.dataset.roleUser);
+        select.disabled = true;
+        try {
+          await api.post(`/api/host/users/${select.dataset.roleUser}/role`, { role: select.value });
+          toast(`${person ? person.name : "Person"} is now ${select.value}`);
+        } catch (error) {
+          toast(error.message, "error");
+          loadPeople();
+        } finally {
+          select.disabled = false;
+        }
+      });
+    });
     body.querySelectorAll("[data-disconnect]").forEach((button) => {
       button.addEventListener("click", () => {
         const person = data.people.find((entry) => entry.id === button.dataset.disconnect);
@@ -292,7 +387,7 @@ async function loadPeople() {
       });
     });
   } catch (error) {
-    body.innerHTML = `<tr><td colspan="4" class="empty-line">${escapeText(error.message)}</td></tr>`;
+    body.innerHTML = `<tr><td colspan="5" class="empty-line">${escapeText(error.message)}</td></tr>`;
   }
 }
 

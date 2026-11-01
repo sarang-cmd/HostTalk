@@ -35,7 +35,7 @@
       <div class="setup-card">
         <p class="console-top__tag">First run</p>
         <h1>Set up this room</h1>
-        <p>Pick a password and a port. Everyone on this network joins with the address and the password. You can change every setting later.</p>
+        <p>Pick a host password for this console, a join password for the room, and a port. You can change every setting later on this machine.</p>
         <form class="setup-form" id="setup-form" novalidate>
           <div class="form-grid">
             <div class="field">
@@ -43,9 +43,19 @@
               <input class="input" id="setup-room" name="room_name" maxlength="40" required value="{{ room_name }}">
             </div>
             <div class="field">
-              <label for="setup-password">Room password</label>
+              <label for="setup-host-user">Host name</label>
+              <input class="input" id="setup-host-user" name="host_user" maxlength="32" required value="host">
+              <span class="field__hint">You sign in to this console with it.</span>
+            </div>
+            <div class="field">
+              <label for="setup-host-password">Host password</label>
+              <input class="input" id="setup-host-password" name="host_password" type="password" minlength="6" required autocomplete="new-password">
+              <span class="field__hint">At least 6 characters. Only for this console.</span>
+            </div>
+            <div class="field">
+              <label for="setup-password">Join password</label>
               <input class="input" id="setup-password" name="password" type="password" minlength="4" required autocomplete="new-password">
-              <span class="field__hint">At least 4 characters.</span>
+              <span class="field__hint">At least 4 characters. Everyone types it to join the room.</span>
             </div>
             <div class="field">
               <label for="setup-port">Port</label>
@@ -76,7 +86,11 @@
         <p id="login-sub">The host console changes server settings, reads logs, and stops the server.</p>
         <form class="console-login__form" id="login-form" novalidate>
           <div class="field">
-            <label for="login-password">Room password</label>
+            <label for="login-user">Host name</label>
+            <input class="input" id="login-user" autocomplete="username" autocapitalize="none" spellcheck="false" required value="{{ host_user }}">
+          </div>
+          <div class="field">
+            <label for="login-password">Host password</label>
             <input class="input" id="login-password" type="password" autocomplete="current-password" required>
           </div>
           <p class="form-error" id="login-error" role="alert"></p>
@@ -124,7 +138,7 @@
             <div class="table-scroll">
               <table class="table">
                 <thead>
-                  <tr><th>Name</th><th>Connected</th><th>Rooms</th><th></th></tr>
+                  <tr><th>Name</th><th>Connected</th><th>Rooms</th><th>Role</th><th></th></tr>
                 </thead>
                 <tbody id="people-body"></tbody>
               </table>
@@ -216,9 +230,9 @@
                 </div>
 
                 <div class="field">
-                  <label for="set-giphy">GIPHY key</label>
-                  <input class="input" id="set-giphy" type="password" autocomplete="off" placeholder="Not set">
-                  <span class="field__hint">Only needed for GIF search. Get a free key at developers.giphy.com.</span>
+                  <label for="set-klipy">KLIPY key</label>
+                  <input class="input" id="set-klipy" type="password" autocomplete="off" placeholder="Not set">
+                  <span class="field__hint">Only needed for GIF search. Get a key at partner.klipy.com.</span>
                 </div>
 
                 <label class="toggle"><input type="checkbox" id="set-previews"> Fetch link previews</label>
@@ -253,9 +267,34 @@
             </div>
           </section>
 
+          <section class="card" aria-labelledby="controls-title">
+            <div class="card__head">
+              <h2 id="controls-title">Room controls</h2>
+            </div>
+            <div class="card__body">
+              <form class="settings-form" id="controls-form">
+                <label class="toggle"><input type="checkbox" id="set-locked"> Lock the room to new people</label>
+                <label class="toggle"><input type="checkbox" id="set-read-only"> Read only for members</label>
+                <div class="form-grid">
+                  <div class="field">
+                    <label for="set-slow-mode">Slow mode, seconds</label>
+                    <input class="input" id="set-slow-mode" type="number" min="0" max="3600" value="0">
+                    <span class="field__hint">0 turns it off. The host and moderators skip it.</span>
+                  </div>
+                  <div class="field">
+                    <label for="set-notice">Notice in the room</label>
+                    <input class="input" id="set-notice" maxlength="200" placeholder="Optional line above the messages">
+                  </div>
+                </div>
+                <p class="form-status" id="controls-status" role="status"></p>
+                <button class="btn btn--primary" type="submit" id="controls-save">Save controls</button>
+              </form>
+            </div>
+          </section>
+
           <section class="card" aria-labelledby="password-title">
             <div class="card__head">
-              <h2 id="password-title">Room password</h2>
+              <h2 id="password-title">Join password</h2>
             </div>
             <div class="card__body">
               <form class="settings-form" id="password-form">
@@ -269,6 +308,33 @@
                 </div>
                 <p class="form-status" id="pw-status" role="status"></p>
                 <button class="btn" type="submit">Change password</button>
+              </form>
+            </div>
+          </section>
+
+          <section class="card" aria-labelledby="host-title">
+            <div class="card__head">
+              <h2 id="host-title">Host sign in</h2>
+              <span class="pill">This machine only</span>
+            </div>
+            <div class="card__body">
+              <form class="settings-form" id="host-form">
+                <div class="form-grid">
+                  <div class="field">
+                    <label for="host-user">Host name</label>
+                    <input class="input" id="host-user" maxlength="32" autocomplete="username">
+                  </div>
+                  <div class="field">
+                    <label for="host-current">Current host password</label>
+                    <input class="input" id="host-current" type="password" autocomplete="current-password">
+                  </div>
+                  <div class="field">
+                    <label for="host-new">New host password</label>
+                    <input class="input" id="host-new" type="password" minlength="6" autocomplete="new-password" placeholder="Leave empty to keep it">
+                  </div>
+                </div>
+                <p class="form-status" id="host-status" role="status"></p>
+                <button class="btn" type="submit">Update host sign in</button>
               </form>
             </div>
           </section>
