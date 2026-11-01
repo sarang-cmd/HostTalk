@@ -471,7 +471,7 @@ Run HostTalk on hardware you control, on a network you trust.
 .venv/bin/pytest
 ```
 
-The suite covers config validation, store behaviour, the HTTP surface, the password flow, rate limits, uploads, preview guarding, the room member rules, the byte and duration formatting on the stats page, the source counts, and the page with a closed database. GitHub Actions runs the same commands, then boots the app and asks `/healthz` for a real answer.
+The suite covers config validation, store behaviour, the HTTP surface, the password flow, rate limits, uploads, preview guarding, the room member rules, the byte and duration formatting on the stats page, the source counts, the page with a closed database, and the 2.2 additions: house names, device identity, pictures, roles, pins, badges, custom emoji, rooms inside rooms, and the four host controls. GitHub Actions runs the same commands, then boots the app and asks `/healthz` for a real answer.
 
 ## Troubleshooting
 
@@ -505,11 +505,14 @@ hosttalk/           server package
   localsend.py      discovery and transfer protocol
   previews.py       guarded link previews
   gifs.py           KLIPY client with cache
+  api_emoji.py      custom emoji upload and serve
+  desktop.py        server, control window, app window
   presence.py       who is here
   stats.py          counts for the stats page and the front page
 static/
   css               tokens, base, app, console, marketing
-  js                core, render, app, console
+  js                core, emoji, render, app, console
+  icons             favicon, touch icon, maskable mark, mark.svg
   fonts             Archivo, Public Sans, Noto Emoji
   screenshots       images used in this file
   lib               QR, compression, gzip helpers
@@ -525,4 +528,4 @@ site/               built pages, committed, served as plain files
 
 Type: Archivo and Public Sans, SIL Open Font License. Noto Emoji for reaction glyphs. QR encoding by `qrcode-generator`. Compression by `compressorjs` and `fflate`. The LocalSend protocol is defined by the LocalSend project.
 
-The code is Apache 2.0. The Terms and Privacy pages ship as drafts. Fill in the operator details before you publish a deployment.
+The mark is drawn for this project. The code is Apache 2.0. The Terms and Privacy pages ship as drafts. Fill in the operator details before you publish a deployment.
