@@ -8,8 +8,8 @@ export default defineConfig({
   // including a subpath on GitHub Pages and a plain file open.
   base: "./",
   build: {
-    // The build is committed, so the page can be served by any static host:
-    // GitHub Pages on /site, an S3 bucket, or a plain web server.
+    // The build is committed, so any static host can serve it: GitHub Pages
+    // under a subpath, an S3 bucket, or a plain web server.
     outDir: "../site",
     emptyOutDir: true,
     assetsInlineLimit: 2048,
