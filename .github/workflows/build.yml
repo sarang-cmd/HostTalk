@@ -1,5 +1,8 @@
 name: Build HostTalk Portable
 
+# The portable build bundles the Python package plus templates and static files.
+# It runs on a tag push, or by hand from the Actions tab.
+
 on:
   workflow_dispatch:
   push:
@@ -25,11 +28,12 @@ jobs:
 
       - name: Build Windows EXE
         run: |
-          pyinstaller --noconfirm --onefile --windowed `
+          pyinstaller --noconfirm --onefile --console `
           --name HostTalk-portable-edition `
           --icon icon.ico `
           --add-data "static;static" `
           --add-data "templates;templates" `
+          --hidden-import "waitress" `
           server.py
 
       - uses: actions/upload-artifact@v4
