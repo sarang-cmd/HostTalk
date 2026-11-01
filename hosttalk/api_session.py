@@ -61,7 +61,7 @@ def status():
             "max_room_members": config.max_room_members,
             "previews_enabled": config.previews_enabled,
             "gifs_enabled": bool(config.values["gifs_enabled"]),
-            "gifs_ready": bool(config.giphy_key),
+            "gifs_ready": bool(config.klipy_key),
             "localsend_enabled": bool(config.localsend.get("enabled")),
             "default_theme": config.values["default_theme"],
             "palette": COLOR_GRID,
