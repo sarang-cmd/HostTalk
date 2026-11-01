@@ -12,6 +12,7 @@ Messages live in a SQLite file on the host machine. They move between the browse
 
 - [What this build adds](#what-this-build-adds)
 - [Screens](#screens)
+- [Project stats](#project-stats)
 - [How it works](#how-it-works)
 - [Run it](#run-it)
 - [Set up the room](#set-up-the-room)
@@ -69,6 +70,10 @@ The 1.x build shipped one room, a five character password check, and a page with
 
 ## Screens
 
+Every server starts on a front page. Live counts, the room address, and one button into the room. The page needs no script.
+
+![Front page](static/screenshots/landing.png)
+
 The join page states the promise, shows the address, and offers a QR code for a phone.
 
 ![Join page](static/screenshots/join-desktop.png)
@@ -93,11 +98,29 @@ The marketing page explains the design and the limits of the tool.
 
 ![How it works page](static/screenshots/about.png)
 
+The stats page counts the instance, the code, and the versions under both.
+
+![Project stats](static/screenshots/stats.png)
+
 Terms and privacy pages ship as drafts with the review step marked.
 
 ![Terms page](static/screenshots/terms.png)
 
 The full set sits in `static/screenshots`. Capture notes live in `docs/SCREENSHOTS.md`.
+
+## Project stats
+
+The app serves a stats page at `/stats`. Open the address on the host or from any device on the network.
+
+Three tables, counted when the page loads:
+
+- **This instance.** People here now, people who ever joined, rooms, messages kept, files, bytes for the database, uploads, and logs, uptime, listening port.
+- **The code.** Lines and files for the server package, room scripts, styles, templates, tests, deployment files, and docs. Bundled libraries sit in a separate table, so the line total describes this project.
+- **The build.** Version, codename, database schema, Python, Flask, Waitress, SQLite, platform, and route counts.
+
+Figures come from two places. `store.stats()` reads rows. A walk of the install folder counts lines, files, and test functions. Nothing leaves the machine, and the page keeps no record of visitors. Message text, names, and addresses do not appear.
+
+Source counts are cached for the life of the process. Instance figures are read on each request. If the database does not answer, the page still renders the code and build tables, and marks the instance table as missing. The code lives in `hosttalk/stats.py`, the markup in `templates/stats.html`.
 
 ## How it works
 
@@ -114,7 +137,7 @@ phone (LocalSend) --UDP 53317 + HTTP--> same Flask app
 
 ### Request path
 
-1. A browser asks for `/`. Flask renders the join view with a bootstrap JSON blob on the body element. The content security policy blocks inline script, so every script is a file under `static/js`.
+1. A browser asks for `/`. Flask renders the front page with live counts and no script. The room lives at `/room`, where Flask renders the join view with a bootstrap JSON blob on the body element. The content security policy blocks inline script, so every script is a file under `static/js`.
 2. The person posts a name and password to `/api/session`. The server checks the bcrypt hash, binds the name to a device key, and writes a signed session cookie.
 3. The page opens `/api/events`, one server-sent event stream. The server keeps a subscriber per connection and pushes message, presence, and typing events through it.
 4. A message posts to `/api/messages`. The server validates the text, writes a row, and publishes to the subscribers of the room. Every open browser paints the message without a refresh.
@@ -140,6 +163,21 @@ Uploads stream to disk in 64 KB chunks with a hard byte cap. Images under 20 MB 
 ### LocalSend
 
 The manager announces a `HostTalk` device over multicast, listens for announcements, and serves the LocalSend v2 endpoints: `/api/localsend/v2/info`, `register`, `prepare-upload`, `upload`, and `cancel`. Files land in the main room with the sender alias attached.
+
+### Pages
+
+| Path | Serves | Who |
+| --- | --- | --- |
+| `/` | Front page with live counts and links into the room | Anyone on the network |
+| `/room` | Join screen, then the room | Anyone with the password |
+| `/console` | Host console: checks, settings, logs, people | Host machine, signed in |
+| `/about` | How the room works, its limits, and run notes | Anyone |
+| `/stats` | Project stats: instance, code, build | Anyone |
+| `/terms`, `/privacy` | Draft legal pages | Anyone |
+| `/healthz` | JSON health check for a monitor | Anyone |
+| `/manifest.webmanifest`, `/sw.js` | Install metadata and the offline shell | Browsers |
+
+A link with `?join=CODE` on the root redirects to the room with the code intact, so invite links from earlier builds keep working. The room address carries the path, which means a scanned QR code opens the join screen and skips the front page.
 
 ## Run it
 
@@ -334,6 +372,7 @@ What this build does:
 - link previews refuse loopback, link local, and private addresses
 - uploads capped by bytes during the stream, not after
 - config file written atomically with mode 0600
+- the stats page exposes counts and versions only, never message text or names
 
 What it does not do:
 
@@ -352,7 +391,7 @@ Run HostTalk on hardware you control, on a network you trust.
 .venv/bin/pytest
 ```
 
-The suite covers config validation, store behaviour, the HTTP surface, the password flow, rate limits, uploads, preview guarding, and the room member rules. GitHub Actions runs the same commands, then boots the app and asks `/healthz` for a real answer.
+The suite covers config validation, store behaviour, the HTTP surface, the password flow, rate limits, uploads, preview guarding, the room member rules, the byte and duration formatting on the stats page, the source counts, and the page with a closed database. GitHub Actions runs the same commands, then boots the app and asks `/healthz` for a real answer.
 
 ## Troubleshooting
 
@@ -387,13 +426,14 @@ hosttalk/           server package
   previews.py       guarded link previews
   gifs.py           GIPHY client with cache
   presence.py       who is here
+  stats.py          counts for the stats page and the front page
 static/
   css               tokens, base, app, console, marketing
   js                core, render, app, console
   fonts             Archivo, Public Sans, Noto Emoji
   screenshots       images used in this file
   lib               QR, compression, gzip helpers
-templates/          index, console, about, terms, privacy, error
+templates/          landing, room, stats, console, about, terms, privacy, error
 deploy/             systemd, launchd, Docker, proxies
 tests/              pytest suite
 docs/               notes on screenshots and the upgrade

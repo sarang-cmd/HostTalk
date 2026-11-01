@@ -93,7 +93,7 @@ def setup():
         config.update(patch)
         svc.store.ensure_room("main", config.room_name, kind="main")
         svc.logger.info("Setup finished", extra={"event": "setup", "ip": client_ip()})
-        return ok(room_name=config.room_name, port=config.port, next="/")
+        return ok(room_name=config.room_name, port=config.port, next="/room")
     except ValidationError as exc:
         return fail(exc.message, exc.status, field=exc.field)
     except Exception as exc:  # ConfigError and other validation problems
@@ -278,7 +278,7 @@ def room_invite(room_id: str):
         max_uses=int(data.get("max_uses") or 50),
     )
     summary = network_summary(request.headers, svc.config.port)
-    url = f"{summary['address']}/?join={invite_row['code']}"
+    url = f"{summary['address']}?join={invite_row['code']}"
     return ok(code=invite_row["code"], url=url, network=summary, room=svc.room_public(room, user["id"]))
 
 

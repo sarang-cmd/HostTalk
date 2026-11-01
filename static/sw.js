@@ -1,9 +1,9 @@
 /* HostTalk service worker.
    Install and offline use need a secure context, so this runs on localhost or
    behind an HTTPS proxy. Plain LAN HTTP browsers skip registration. */
-const CACHE = "hosttalk-shell-2.0.0";
+const CACHE = "hosttalk-shell-2.0.0-room";
 const SHELL = [
-  "/",
+  "/room",
   "/static/css/tokens.css",
   "/static/css/base.css",
   "/static/css/app.css",
@@ -44,11 +44,13 @@ self.addEventListener("fetch", (event) => {
     event.respondWith(
       fetch(request)
         .then((response) => {
-          const copy = response.clone();
-          caches.open(CACHE).then((cache) => cache.put("/", copy));
+          if (url.pathname === "/room") {
+            const copy = response.clone();
+            caches.open(CACHE).then((cache) => cache.put("/room", copy));
+          }
           return response;
         })
-        .catch(() => caches.match("/"))
+        .catch(() => caches.match("/room"))
     );
     return;
   }

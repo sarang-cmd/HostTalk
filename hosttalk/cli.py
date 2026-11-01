@@ -258,7 +258,7 @@ def command_serve(args: argparse.Namespace) -> int:
 
     local_url = f"http://127.0.0.1:{config.port}/"
     host_ip = lan_ip()
-    network_url = f"http://{host_ip}:{config.port}/"
+    network_url = f"http://{host_ip}:{config.port}/room"
     console_url = f"http://127.0.0.1:{config.port}/console"
 
     if not config.setup_complete:

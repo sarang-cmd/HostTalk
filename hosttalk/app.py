@@ -5,12 +5,14 @@ from __future__ import annotations
 import json
 import time
 from typing import Any
+from urllib.parse import quote
 
 from flask import (
     Flask,
     Response,
     g,
     jsonify,
+    redirect,
     render_template,
     request,
     send_from_directory,
@@ -21,6 +23,7 @@ from .auth import COLOR_GRID
 from .config import project_root
 from .netinfo import is_loopback, network_summary
 from .services import Services
+from .stats import human_bytes, human_duration, instance_stats, runtime_stats, source_stats
 from .version import __version__
 
 
@@ -73,6 +76,10 @@ def create_app(services: Services) -> Flask:
     for blueprint in (api_session.bp, api_chat.bp, api_files.bp, api_host.bp):
         app.register_blueprint(blueprint)
 
+    app.add_template_filter(human_bytes, "filesize")
+    app.add_template_filter(human_duration, "duration")
+    app.add_template_filter(lambda value: f"{int(value):,}", "grouped")
+
     def template_context() -> dict[str, Any]:
         return {
             "version": __version__,
@@ -83,7 +90,26 @@ def create_app(services: Services) -> Flask:
         }
 
     @app.get("/")
-    def index():
+    def landing():
+        """The front page. Figures come from this instance and render server side."""
+        join_code = request.args.get("join", "")
+        if join_code:
+            return redirect(f"/room?join={quote(join_code)}")
+        try:
+            counts = instance_stats(services)
+        except Exception as exc:
+            services.logger.warning("The front page could not read the store: %s", exc)
+            counts = None
+        return render_template(
+            "landing.html",
+            counts=counts,
+            network=network_summary(request.headers, config.port),
+            local=is_loopback(request.remote_addr or ""),
+            **template_context(),
+        )
+
+    @app.get("/room")
+    def room():
         network = network_summary(request.headers, config.port)
         bootstrap = {
             "version": __version__,
@@ -105,7 +131,7 @@ def create_app(services: Services) -> Flask:
             "join_code": request.args.get("join", ""),
         }
         return render_template(
-            "index.html",
+            "room.html",
             bootstrap=bootstrap,
             **template_context(),
         )
@@ -124,6 +150,27 @@ def create_app(services: Services) -> Flask:
         return render_template(
             "about.html",
             network=network_summary(request.headers, config.port),
+            **template_context(),
+        )
+
+    @app.get("/stats")
+    def stats_page():
+        """What this install is made of. Public, aggregate, no message text."""
+        try:
+            counts = instance_stats(services)
+        except Exception as exc:
+            services.logger.warning("The stats page could not read the store: %s", exc)
+            counts = None
+        rules = [rule for rule in app.url_map.iter_rules() if rule.endpoint != "static"]
+        api_rules = sum(1 for rule in rules if rule.rule.startswith("/api/"))
+        return render_template(
+            "stats.html",
+            counts=counts,
+            source=source_stats(),
+            runtime=runtime_stats(),
+            routes={"total": len(rules), "api": api_rules, "pages": len(rules) - api_rules},
+            network=network_summary(request.headers, config.port),
+            local=is_loopback(request.remote_addr or ""),
             **template_context(),
         )
 
@@ -182,7 +229,7 @@ def create_app(services: Services) -> Flask:
             "name": f"{config.room_name} on HostTalk",
             "short_name": "HostTalk",
             "description": "A room on your local network. No cloud, no accounts.",
-            "start_url": "/",
+            "start_url": "/room",
             "scope": "/",
             "display": "standalone",
             "background_color": "#F2F1EC",

@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="{{ theme if theme != 'auto' else 'light' }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Project stats, HostTalk</title>
+  <meta name="description" content="Figures for this HostTalk install: rows in the database, bytes in the data folder, lines of code in the build, and versions of the pieces under the app.">
+  <meta name="theme-color" content="#f1f0eb">
+  <link rel="icon" href="/static/icons/favicon.ico" sizes="any">
+  <link rel="stylesheet" href="/static/css/tokens.css?v={{ static_v }}">
+  <link rel="stylesheet" href="/static/css/base.css?v={{ static_v }}">
+  <link rel="stylesheet" href="/static/css/marketing.css?v={{ static_v }}">
+</head>
+<body class="site site--stats">
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="site-top">
+    <a class="brand" href="/">
+      <svg class="brand__mark" viewBox="0 0 32 32" aria-hidden="true">
+        <rect width="32" height="32" rx="9" fill="var(--ink)"/>
+        <rect class="mark-room" x="9" y="14" width="14" height="9" rx="1.5"/>
+        <circle class="mark-dot" cx="22" cy="10" r="2.4"/>
+      </svg>
+      <span>HostTalk</span>
+    </a>
+    <nav class="site-nav" aria-label="Site">
+      <a href="/room">Room</a>
+      <a href="/about">How it works</a>
+      <a href="/stats" aria-current="page">Stats</a>
+      {% if local %}<a href="/console">Console</a>{% endif %}
+    </nav>
+  </header>
+
+  <main id="main">
+    <div class="wrap">
+      <header class="stats-head">
+        <h1>What this server is made of.</h1>
+        <p class="lede">Three sets of figures. The rows in this instance, the code in this build, and the pieces under both. The page counts them on request, on this machine, and keeps no record of who asked.</p>
+      </header>
+
+      <section class="section" id="instance">
+        <div class="section__head">
+          <h2>This instance</h2>
+          <p>Rows in the database and bytes in the data folder. A host with a busy room sees larger numbers than a fresh install.</p>
+        </div>
+        {% if counts %}
+        <table class="ledger">
+          <caption class="visually-hidden">Figures for the running instance</caption>
+          <tbody>
+            <tr><th scope="row">People here now</th><td>{{ counts.online }}</td></tr>
+            <tr><th scope="row">People who ever joined</th><td>{{ counts.people }}</td></tr>
+            <tr><th scope="row">Rooms</th><td>{{ counts.rooms }}</td></tr>
+            <tr><th scope="row">Messages kept</th><td>{{ counts.messages|grouped }}</td></tr>
+            <tr><th scope="row">Files stored</th><td>{{ counts.attachments|grouped }}</td></tr>
+            <tr><th scope="row">File bytes</th><td>{{ counts.attachment_bytes|filesize }}</td></tr>
+            <tr><th scope="row">Database file</th><td>{{ counts.db_bytes|filesize }}</td></tr>
+            <tr><th scope="row">Uploads folder</th><td>{{ counts.upload_bytes|filesize }}</td></tr>
+            <tr><th scope="row">Log folder</th><td>{{ counts.log_bytes|filesize }}</td></tr>
+            <tr><th scope="row">Uptime</th><td>{{ counts.uptime|duration }}</td></tr>
+            <tr><th scope="row">Listening port</th><td>{{ counts.port }}</td></tr>
+          </tbody>
+        </table>
+        <p class="fineprint">Counted at {{ counts.counted_at }} on the host clock. Reload for new figures.</p>
+        {% else %}
+        <p class="notice" role="status">The database did not answer, so the instance figures are missing. The build and code tables below still come from files on disk. Check the host console logs for the cause.</p>
+        {% endif %}
+      </section>
+
+      <section class="section" id="code">
+        <div class="section__head">
+          <h2>The code</h2>
+          <p>Lines counted in the files this build ships. Blank lines and comments count. Bundled libraries stay out and appear in their own table.</p>
+        </div>
+        <div class="bars">
+          {% for area in source.areas %}
+          <div class="bars__row">
+            <span class="bars__label">{{ area.name }}<span class="bars__files">{{ area.files }} {% if area.files == 1 %}file{% else %}files{% endif %}</span></span>
+            <span class="bars__track" aria-hidden="true"><span class="bars__fill" style="width: {{ area.share }}%"></span></span>
+            <span class="bars__value">{{ area.lines|grouped }}</span>
+          </div>
+          {% endfor %}
+        </div>
+        <p class="fineprint">{{ source.totals.lines|grouped }} lines in {{ source.totals.files }} files. The bar length is the share of the total.</p>
+        <dl class="stat-facts">
+          <div><dt>Test functions</dt><dd>{{ source.test_cases }}</dd></div>
+          <div><dt>Test files</dt><dd>{{ source.test_files }}</dd></div>
+          <div><dt>Screenshots</dt><dd>{{ source.screenshots }}</dd></div>
+          <div><dt>Python packages</dt><dd>{{ source.packages }}</dd></div>
+        </dl>
+      </section>
+
+      <section class="section" id="build">
+        <div class="section__head">
+          <h2>The build</h2>
+          <p>Versions read from the running process and the installed packages. Routes counted from the Flask route table at this moment.</p>
+        </div>
+        <table class="ledger">
+          <caption class="visually-hidden">Versions and route counts</caption>
+          <tbody>
+            <tr><th scope="row">HostTalk</th><td>{{ runtime.version }}</td></tr>
+            <tr><th scope="row">Codename</th><td>{{ runtime.codename }}</td></tr>
+            <tr><th scope="row">Database schema</th><td>{{ runtime.schema }}</td></tr>
+            <tr><th scope="row">Python</th><td>{{ runtime.python }}</td></tr>
+            <tr><th scope="row">Flask</th><td>{{ runtime.flask }}</td></tr>
+            <tr><th scope="row">Waitress</th><td>{{ runtime.waitress }}</td></tr>
+            <tr><th scope="row">SQLite</th><td>{{ runtime.sqlite }}</td></tr>
+            <tr><th scope="row">Platform</th><td>{{ runtime.platform }}, {{ runtime.machine }}</td></tr>
+            <tr><th scope="row">Page routes</th><td>{{ routes.pages }}</td></tr>
+            <tr><th scope="row">API routes</th><td>{{ routes.api }}</td></tr>
+            <tr><th scope="row">Routes served</th><td>{{ routes.total }}</td></tr>
+          </tbody>
+        </table>
+        <p class="fineprint">The route count includes the health check and the manifest. Static files are served by one route and counted once.</p>
+      </section>
+
+      <section class="section" id="bundled">
+        <div class="section__head">
+          <h2>Bundled libraries</h2>
+          <p>Third-party files served exactly as published. The code table above leaves them out, so its total describes work on HostTalk.</p>
+        </div>
+        <table class="ledger">
+          <caption class="visually-hidden">Bundled files and sizes</caption>
+          <tbody>
+            {% for file in source.vendored %}
+            <tr><th scope="row"><code>{{ file.name }}</code></th><td>{{ file.bytes|filesize }}{% if file.note %} <span class="ledger__note">{{ file.note }}</span>{% endif %}</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </section>
+
+      <section class="section">
+        <div class="section__head">
+          <h2>What the page leaves out</h2>
+          <p>No message text, no names, no addresses. No counter runs in a browser and no figure leaves this machine. The source counts come from the install folder, so a packaged build without source files shows zero there.</p>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <footer class="site-foot wrap">
+    <span>HostTalk {{ version }}, Apache 2.0, served at {{ network.address }}</span>
+    <nav aria-label="Site">
+      <a href="/room">Room</a>
+      <a href="/about">How it works</a>
+      <a href="/stats">Stats</a>
+      <a href="/console">Host console</a>
+      <a href="/terms">Terms</a>
+      <a href="/privacy">Privacy</a>
+    </nav>
+  </footer>
+</body>
+</html>

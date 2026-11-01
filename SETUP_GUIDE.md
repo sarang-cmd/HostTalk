@@ -66,8 +66,8 @@ Both paths write `config.json` into the data folder with mode 0600. The password
 
 The banner prints three addresses:
 
-- `http://127.0.0.1:7284` for this machine
-- `http://192.168.x.x:7284` for the network
+- `http://127.0.0.1:7284` for the front page on this machine
+- `http://192.168.x.x:7284/room` for the room, and for the QR code
 - `http://192.168.x.x:7284/console` for the host console
 
 Keep the terminal open, or use one of the service options below.

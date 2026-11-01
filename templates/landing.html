@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="{{ theme if theme != 'auto' else 'light' }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>HostTalk, a chat room on your network</title>
+  <meta name="description" content="HostTalk runs on one machine on a local network. Everyone on the same Wi-Fi opens a browser and joins. Messages and files stay on the host.">
+  <meta name="theme-color" content="#f1f0eb">
+  <link rel="icon" href="/static/icons/favicon.ico" sizes="any">
+  <link rel="stylesheet" href="/static/css/tokens.css?v={{ static_v }}">
+  <link rel="stylesheet" href="/static/css/base.css?v={{ static_v }}">
+  <link rel="stylesheet" href="/static/css/marketing.css?v={{ static_v }}">
+</head>
+<body class="site">
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="site-top">
+    <a class="brand" href="/">
+      <svg class="brand__mark" viewBox="0 0 32 32" aria-hidden="true">
+        <rect width="32" height="32" rx="9" fill="var(--ink)"/>
+        <rect class="mark-room" x="9" y="14" width="14" height="9" rx="1.5"/>
+        <circle class="mark-dot" cx="22" cy="10" r="2.4"/>
+      </svg>
+      <span>HostTalk</span>
+    </a>
+    <nav class="site-nav" aria-label="Site">
+      <a href="/room">Room</a>
+      <a href="/about">How it works</a>
+      <a href="/stats">Stats</a>
+      {% if local %}<a href="/console">Console</a>{% endif %}
+    </nav>
+  </header>
+
+  <main id="main">
+    <div class="wrap">
+      <section class="hero hero--front">
+        <div>
+          <h1>A room for the people on your network.</h1>
+          <p class="hero__lede">HostTalk runs on one machine in the building. Everyone on the same Wi-Fi opens a browser, picks a name, and joins. Messages, files, and logs stay on the host.</p>
+          <div class="hero__actions">
+            <a class="btn btn--primary" href="/room">Open the room</a>
+            <a class="btn" href="/about">How it works</a>
+          </div>
+          <p class="status-line" data-quiet="{{ 'false' if counts and counts.online else 'true' }}">
+            <span class="status-line__dot" aria-hidden="true"></span>
+            <span>
+              {% if not counts %}The server is up. The room figures did not load.
+              {% elif counts.online == 0 %}The room is quiet. Nobody is here yet.
+              {% elif counts.online == 1 %}One person is in the room.
+              {% else %}{{ counts.online }} people are in the room.{% endif %}
+            </span>
+          </p>
+        </div>
+        <aside class="hero__aside">
+          <div class="hero__facts">
+            <div class="hero__fact"><span>Room</span><strong>{{ room_name }}</strong></div>
+            <div class="hero__fact"><span>Version</span><strong>{{ version }}</strong></div>
+            <div class="hero__fact"><span>Messages kept</span><strong>{% if counts %}{{ counts.messages|grouped }}{% else %}n/a{% endif %}</strong></div>
+            <div class="hero__fact"><span>Rooms</span><strong>{% if counts %}{{ counts.rooms }}{% else %}n/a{% endif %}</strong></div>
+            <div class="hero__fact"><span>Uptime</span><strong>{% if counts %}{{ counts.uptime|duration }}{% else %}n/a{% endif %}</strong></div>
+          </div>
+          <p class="fineprint">This machine serves the room at</p>
+          <p class="hero__address">{{ network.address }}</p>
+          <p class="fineprint">Open that address on any device on this Wi-Fi.</p>
+        </aside>
+      </section>
+
+      <figure class="figure figure--hero">
+        <img src="/static/screenshots/room-desktop.png" alt="The HostTalk room on a laptop: rooms on the left, a message thread in the middle, people on the right." width="1600" height="1000" loading="eager">
+        <figcaption>The room at laptop width. Names and messages come from a demo room made for the screenshots.</figcaption>
+      </figure>
+
+      <section class="section">
+        <div class="section__head">
+          <h2>Room chat, with the parts a small group needs.</h2>
+          <p>One server runs the rooms, the files, and the host console. There is no second service to install and no account to create.</p>
+        </div>
+        <div class="feature-list">
+          <div>
+            <h3>One room, or several</h3>
+            <p>The main room holds everyone. Named rooms hold up to 20 people. Direct threads stay between two.</p>
+          </div>
+          <div>
+            <h3>Messages stay here</h3>
+            <p>Every message lands in a SQLite file on this machine. No relay, no cloud copy, no analytics.</p>
+          </div>
+          <div>
+            <h3>Files up to 20 MB</h3>
+            <p>Images show in the thread. Other files download. The browser shrinks an oversized photo before upload.</p>
+          </div>
+          <div>
+            <h3>Quotes and reactions</h3>
+            <p>Reply with a quote, add a reaction, edit or delete your own text. A deleted message leaves a quiet placeholder.</p>
+          </div>
+          <div>
+            <h3>A console for the host</h3>
+            <p>Checks, people, rooms, logs, settings, and a stop button, in a browser. The console answers on this machine only by default.</p>
+          </div>
+          <div>
+            <h3>Files from phones</h3>
+            <p>LocalSend devices on the same network send files straight into the room. No cable, no cloud drive.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="run">
+        <div class="section__head">
+          <h2>Two commands on the host.</h2>
+          <p>Python 3.10 or newer. No build step, no database server, no Node toolchain. The setup screen opens in a browser on the machine which runs the server.</p>
+        </div>
+        <div class="run-grid">
+          <div>
+            <h3>From source</h3>
+            <pre class="code-block"><code>python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+python server.py</code></pre>
+            <p class="fineprint">On Windows use <code>.venv\Scripts\activate</code>. The console then opens at <code>http://127.0.0.1:7284/console</code>.</p>
+          </div>
+          <div>
+            <h3>Other ways to start</h3>
+            <table class="spec">
+              <tbody>
+                <tr><th>systemd</th><td>Unit file and installer in <code>deploy/</code>.</td></tr>
+                <tr><th>launchd</th><td>Plist for a login session on macOS.</td></tr>
+                <tr><th>Docker</th><td>Image and compose file with a fixed data volume.</td></tr>
+                <tr><th>Windows</th><td>Batch launcher for a desktop shortcut.</td></tr>
+                <tr><th>Proxy</th><td>Caddy and nginx examples with the stream settings.</td></tr>
+              </tbody>
+            </table>
+            <p class="fineprint">Service notes and the full settings list live in the repository and on the <a href="/about#run">how it works</a> page.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="section__head">
+          <h2>Every figure on this site is countable.</h2>
+          <p>Messages stored, files kept, lines of code, test cases. The stats page reads those from this machine when you open the page. No counter runs in the background.</p>
+        </div>
+        <div class="hero__actions">
+          <a class="btn" href="/stats">See the project stats</a>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <footer class="site-foot wrap">
+    <span>HostTalk {{ version }}, Apache 2.0, served at {{ network.address }}</span>
+    <nav aria-label="Site">
+      <a href="/room">Room</a>
+      <a href="/about">How it works</a>
+      <a href="/stats">Stats</a>
+      <a href="/console">Host console</a>
+      <a href="/terms">Terms</a>
+      <a href="/privacy">Privacy</a>
+    </nav>
+  </footer>
+</body>
+</html>

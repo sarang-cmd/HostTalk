@@ -542,3 +542,248 @@
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+/* Front page */
+.hero--front {
+  align-items: start;
+  padding-bottom: clamp(20px, 3vw, 36px);
+}
+
+.hero--front h1 {
+  max-width: 13ch;
+}
+
+.status-line {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 26px;
+  font-size: var(--text-sm);
+  color: var(--ink-2);
+  max-width: 44ch;
+}
+
+.status-line__dot {
+  width: 7px;
+  height: 7px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--live);
+}
+
+.status-line[data-quiet="true"] .status-line__dot {
+  background: var(--line-strong);
+}
+
+.site-nav a[aria-current="page"] {
+  color: var(--ink);
+  font-weight: 500;
+}
+
+@media (max-width: 560px) {
+  .site-top {
+    gap: 12px;
+  }
+
+  .site-nav {
+    gap: 12px;
+  }
+
+  .site-nav a[href="/console"] {
+    display: none;
+  }
+}
+
+/* Project stats */
+.site--stats .section {
+  padding: clamp(32px, 4.4vw, 56px) 0;
+}
+
+.stats-head {
+  padding: clamp(40px, 7vw, 88px) 0 clamp(10px, 2vw, 24px);
+  max-width: 760px;
+}
+
+.stats-head h1 {
+  font-size: clamp(2.2rem, 5vw, 3.75rem);
+  line-height: 0.98;
+  letter-spacing: -0.035em;
+  max-width: 15ch;
+}
+
+.stats-head .lede {
+  margin-top: 20px;
+  font-size: var(--text-md);
+  line-height: 1.6;
+  color: var(--ink-2);
+  max-width: 62ch;
+}
+
+.ledger {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 26px;
+  font-size: var(--text-sm);
+}
+
+.ledger th {
+  padding: 11px 0;
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+  font-weight: 400;
+  color: var(--ink-2);
+}
+
+.ledger td {
+  padding: 11px 0 11px 20px;
+  border-bottom: 1px solid var(--line);
+  text-align: right;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+  white-space: nowrap;
+}
+
+.ledger tr:last-child th,
+.ledger tr:last-child td {
+  border-bottom: 0;
+}
+
+.ledger code {
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 0.8125rem;
+}
+
+.ledger__note {
+  margin-left: 4px;
+  color: var(--muted);
+  font-weight: 400;
+}
+
+.notice {
+  margin-top: 24px;
+  max-width: 68ch;
+  padding: 14px 16px;
+  border: 1px solid var(--warn);
+  border-radius: var(--radius);
+  background: var(--warn-wash);
+  color: var(--ink-2);
+  font-size: var(--text-sm);
+  line-height: 1.55;
+}
+
+.bars {
+  display: grid;
+  gap: 16px;
+  margin-top: 28px;
+}
+
+.bars__row {
+  display: grid;
+  grid-template-columns: minmax(150px, 0.8fr) minmax(0, 2.2fr) 84px;
+  align-items: center;
+  gap: 18px;
+}
+
+.bars__label {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: var(--text-sm);
+  color: var(--ink);
+}
+
+.bars__files {
+  font-size: var(--text-xs);
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.bars__track {
+  height: 8px;
+  background: var(--surface-2);
+  border-radius: 1px;
+  overflow: hidden;
+}
+
+.bars__fill {
+  display: block;
+  height: 100%;
+  min-width: 2px;
+  background: var(--accent);
+}
+
+.bars__value {
+  text-align: right;
+  font-size: var(--text-sm);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+
+.stat-facts {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin-top: 34px;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+
+.stat-facts div {
+  padding: 16px 18px 18px 0;
+  border-right: 1px solid var(--line);
+}
+
+.stat-facts div:last-child {
+  padding-right: 0;
+  border-right: 0;
+}
+
+.stat-facts dt {
+  font-size: var(--text-xs);
+  color: var(--muted);
+}
+
+.stat-facts dd {
+  margin: 6px 0 0;
+  font-family: var(--font-display);
+  font-size: var(--text-xl);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+
+@media (max-width: 720px) {
+  .bars__row {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 8px 14px;
+  }
+
+  .bars__track {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+
+  .bars__value {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .stat-facts {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .stat-facts div:nth-child(2n) {
+    padding-left: 18px;
+    border-right: 0;
+    border-left: 1px solid var(--line);
+  }
+
+  .stat-facts div:nth-child(-n + 2) {
+    border-bottom: 1px solid var(--line);
+  }
+}
+
+.bars + .fineprint {
+  margin-top: 18px;
+}
