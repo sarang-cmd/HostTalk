@@ -19,8 +19,24 @@ from .store import Store
 MAX_NAME_LEN = 32
 MAX_MESSAGE_LEN = 4000
 MAX_ROOM_NAME_LEN = 40
+MAX_AVATAR_BYTES = 3 * 1024 * 1024
 NICKNAME_COOLDOWN_SECONDS = 3600
-ALLOWED_REACTIONS = ["👍", "🎉", "👀", "✅", "😂", "🙏", "🔥", "💡", "❤️", "🤝"]
+DEFAULT_NAME = "John Appleseed"
+ALLOWED_REACTIONS = [
+    "👍", "🎉", "👀", "✅", "😂", "🙏",
+    "🔥", "💡", "❤️", "🤝", "😮", "🎯",
+]
+
+# Three roles. The host runs the room, moderators keep it tidy,
+# members look after their own messages.
+ROLE_HOST = "host"
+ROLE_MODERATOR = "moderator"
+ROLE_MEMBER = "member"
+ROLES = (ROLE_HOST, ROLE_MODERATOR, ROLE_MEMBER)
+ROLE_LABELS = {ROLE_HOST: "Host", ROLE_MODERATOR: "Moderator", ROLE_MEMBER: "Member"}
+BADGE_ICONS = ("shield", "hash", "users", "room", "link", "check", "lock", "image", "monitor", "search")
+BADGE_TEXT_LEN = 4
+ASSIGNABLE_ROLES = (ROLE_MODERATOR, ROLE_MEMBER)
 
 # Twenty distinct colors. Each passes 4.5:1 contrast against white text.
 COLOR_GRID = [
@@ -52,6 +68,50 @@ def clean_name(raw: Any) -> str:
     if text.lower() in {"system", "hosttalk", "admin"}:
         raise ValidationError("Choose a different name", field="name")
     return text
+
+
+def name_or_default(raw: Any) -> str:
+    """A blank name joins as the house guest. Anything else is checked."""
+    text = " ".join(str(raw or "").split())
+    if not text:
+        return DEFAULT_NAME
+    return clean_name(text)
+
+
+def clean_role(raw: Any, *, allowed: tuple[str, ...] = ASSIGNABLE_ROLES) -> str:
+    text = str(raw or "").strip().lower()
+    if text not in allowed:
+        raise ValidationError("That role is not available", field="role")
+    return text
+
+
+def clean_badge_icon(raw: Any) -> str:
+    text = str(raw or "").strip().lower()
+    if not text:
+        return ""
+    if text not in BADGE_ICONS:
+        raise ValidationError("Pick a badge icon from the list", field="badge_icon")
+    return text
+
+
+def clean_badge_text(raw: Any) -> str:
+    text = " ".join(str(raw or "").split())
+    if not text:
+        return ""
+    if len(text) > BADGE_TEXT_LEN:
+        raise ValidationError(f"Badge text is {BADGE_TEXT_LEN} characters or fewer", field="badge_text")
+    if not all(char.isalnum() for char in text):
+        raise ValidationError("Badge text uses letters and numbers only", field="badge_text")
+    return text
+
+
+def role_rank(role: str) -> int:
+    return {ROLE_HOST: 3, ROLE_MODERATOR: 2}.get(role, 1)
+
+
+def can_moderate(role: str) -> bool:
+    """Hosts and moderators act on other people's messages."""
+    return role_rank(role) >= 2
 
 
 def clean_message(raw: Any) -> str:
@@ -89,10 +149,37 @@ def clean_color(raw: Any) -> str:
     return text
 
 
+CUSTOM_EMOJI_PREFIX = "custom:"
+_EMOJI_PUNCTUATION = {"\u200d", "\ufe0f", "\ufe0e", "\u20e3"}
+
+
 def clean_emoji(raw: Any) -> str:
-    text = str(raw or "")
-    if text not in ALLOWED_REACTIONS:
-        raise ValidationError("That reaction is not available", field="emoji")
+    """Any emoji works. Plain text does not, and neither do links."""
+    text = str(raw or "").strip()
+    if not text or len(text) > 32:
+        raise ValidationError("Pick an emoji", field="emoji")
+    if text.startswith(CUSTOM_EMOJI_PREFIX):
+        return text
+    for char in text:
+        code = ord(char)
+        if code > 127 or char in _EMOJI_PUNCTUATION:
+            continue
+        # Keycaps like 1 and # need one digit or symbol before U+20E3.
+        if text.endswith("\u20e3") and (char.isdigit() or char in "#*"):
+            continue
+        raise ValidationError("Pick an emoji", field="emoji")
+    # A letter with an accent is still text, not a reaction.
+    if not any(ord(char) > 0x2000 or char in _EMOJI_PUNCTUATION for char in text):
+        raise ValidationError("Pick an emoji", field="emoji")
+    return text
+
+
+def clean_emoji_name(raw: Any) -> str:
+    text = str(raw or "").strip().strip(":").lower()
+    if not 2 <= len(text) <= 24:
+        raise ValidationError("Emoji names need 2 to 24 characters", field="name")
+    if not all(char.isalnum() or char in "_-" for char in text):
+        raise ValidationError("Use letters, numbers, dashes, or underscores", field="name")
     return text
 
 
