@@ -1423,6 +1423,10 @@ body.app {
   color: var(--faint);
 }
 
+.composer__input:read-only {
+  color: var(--muted);
+}
+
 .composer__tools {
   display: flex;
   align-items: center;
@@ -1449,6 +1453,7 @@ body.app {
 
 .composer__send:disabled {
   opacity: 0.45;
+  cursor: not-allowed;
 }
 
 :root[data-theme="dark"] .composer__send {
