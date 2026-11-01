@@ -1,18 +1,24 @@
 import {
   api,
-  avatarStyle,
+  avatarHtml,
+  badgeHtml,
+  canModerate,
   currentRoom,
   escapeHtml,
   extractUrls,
   formatDay,
   formatSize,
   formatTime,
-  initials,
   linkify,
   qrSvg,
+  reactionHtml,
+  reactionLabel,
+  roleBadge,
+  roleLabel,
   roomMessages,
   state,
 } from "./core.js";
+import { EMOJI_GROUPS } from "./emoji.js";
 
 const previewCache = new Map();
 const MAX_PREVIEWS = 30;
@@ -136,17 +142,34 @@ export function renderRoomList() {
   if (!list || !dmList) return;
   const groups = state.rooms.filter((room) => room.kind !== "dm");
   const dms = state.rooms.filter((room) => room.kind === "dm");
-  list.innerHTML = groups
-    .map((room) => {
+  const known = new Set(groups.map((room) => room.id));
+  const children = new Map();
+  for (const room of groups) {
+    const parent = room.parent_id && known.has(room.parent_id) ? room.parent_id : "";
+    if (!children.has(parent)) children.set(parent, []);
+    children.get(parent).push(room);
+  }
+  const ordered = [];
+  const walk = (parent, depth) => {
+    for (const room of children.get(parent) || []) {
+      ordered.push({ room, depth });
+      walk(room.id, depth + 1);
+    }
+  };
+  walk("", 0);
+  list.innerHTML = ordered
+    .map(({ room, depth }) => {
       const unread = state.unread.get(room.id) || 0;
       const kind = room.kind === "main" ? "main" : "room";
       return `
         <li>
-          <button class="rail__item" type="button" data-action="switch-room" data-room="${room.id}"
+          <button class="rail__item${depth ? " rail__item--child" : ""}" type="button" data-action="switch-room" data-room="${room.id}"
+            data-joined="${room.joined ? "true" : "false"}"
             ${room.id === state.activeRoomId ? 'aria-current="true"' : ""}>
             <svg class="icon icon--sm" aria-hidden="true"><use href="#${room.kind === "main" ? "i-hash" : "i-room"}"></use></svg>
             <span class="rail__item-name">${escapeHtml(room.name)}</span>
             ${room.has_password ? '<svg class="icon icon--sm" aria-label="Password required"><use href="#i-lock"></use></svg>' : ""}
+            ${room.joined ? "" : '<span class="rail__badge">not joined</span>'}
             ${unread ? `<span class="rail__unread">${unread}</span>` : ""}
             <span class="visually-hidden">${kind}</span>
           </button>
@@ -183,11 +206,12 @@ export function renderMe() {
   if (!state.me) return;
   const avatar = document.getElementById("me-avatar");
   if (avatar) {
-    avatar.textContent = initials(state.me.name);
-    avatar.style.background = state.me.color;
+    avatar.innerHTML = avatarHtml(state.me, "avatar", { lazy: false });
   }
   setText("me-name", state.me.name);
-  setText("me-color-label", "In the room");
+  const role = roleLabel(state.me.role);
+  setText("me-color-label", role ? `${role} of this room` : "In the room");
+  setText("settings-role", roleText(state.me.role));
   const nameInput = document.getElementById("settings-name");
   if (nameInput && document.activeElement !== nameInput) nameInput.value = state.me.name;
   const roomName = document.getElementById("settings-room-name");
@@ -195,6 +219,42 @@ export function renderMe() {
   const meta = document.getElementById("settings-room-meta");
   if (meta) meta.textContent = `${state.people.filter((p) => p.online).length} here · ${state.rooms.length} rooms`;
   renderColorGrid();
+}
+
+function roleText(role) {
+  if (role === "host") return "Host. You hand out moderator roles, pin messages, and delete any message.";
+  if (role === "moderator") return "Moderator. You pin messages and delete other people's messages.";
+  return "Member. You look after your own messages. The host can make you a moderator.";
+}
+
+export function renderAvatarSettings() {
+  const slot = document.getElementById("settings-avatar-slot");
+  if (slot && state.me) slot.innerHTML = avatarHtml(state.me, "avatar avatar--xl", { lazy: false });
+  const remove = document.getElementById("settings-avatar-remove");
+  if (remove) remove.hidden = !(state.me && state.me.avatar_url);
+  const hint = document.getElementById("settings-avatar-hint");
+  if (hint) {
+    hint.textContent = state.me && state.me.avatar_url
+      ? "Shown in messages, the people panel, and the rail."
+      : "Add a picture, or keep the initials from your name.";
+  }
+}
+
+export function renderBadgeSettings() {
+  const grid = document.getElementById("badge-icons");
+  const input = document.getElementById("settings-badge-text");
+  if (!grid || !state.me) return;
+  const icons = state.bootstrap.badge_icons || [];
+  const current = state.me.badge_icon || "";
+  grid.innerHTML = icons
+    .map(
+      (icon) => `<button class="badge-choice" type="button" data-badge-icon="${icon}"
+        aria-pressed="${icon === current}" aria-label="Badge icon ${icon}">
+        <svg class="icon" aria-hidden="true"><use href="#i-${icon}"></use></svg>
+      </button>`
+    )
+    .join("");
+  if (input && document.activeElement !== input) input.value = state.me.badge_text || "";
 }
 
 export function renderColorGrid() {
@@ -222,22 +282,64 @@ export function renderPeoplePanel() {
     list.innerHTML = '<li class="empty"><span class="empty__title">The room is quiet</span><p>Send the invite link and someone shows up here.</p></li>';
     return;
   }
+  const iAmHost = Boolean(state.me && state.me.role === "host");
   list.innerHTML = members
     .map((person) => {
       const isMe = state.me && person.id === state.me.id;
+      const sub = isMe ? "This device" : person.role === "moderator" ? "Keeps the room tidy" : "In the room";
+      const nextRole = person.role === "moderator" ? "member" : "moderator";
+      const roleButton =
+        iAmHost && !isMe
+          ? `<button class="icon-btn" type="button" data-action="role" data-user="${person.id}" data-role="${nextRole}"
+              aria-label="${nextRole === "moderator" ? "Make" : "Remove"} moderator ${escapeHtml(person.name)}">
+              <svg class="icon" aria-hidden="true"><use href="#i-shield"></use></svg></button>`
+          : "";
       return `
         <li class="person">
-          <span class="avatar avatar--lg" style="${avatarStyle(person.color)}" aria-hidden="true">${initials(person.name)}</span>
+          ${avatarHtml(person, "avatar avatar--lg")}
           <span class="person__meta">
-            <span class="person__name">${escapeHtml(person.name)}${isMe ? ' <span class="msg__you">you</span>' : ""}</span>
-            <span class="person__sub">${isMe ? "This device" : "In the room"}</span>
+            <span class="person__name">${escapeHtml(person.name)}${badgeHtml(person)}${roleBadge(person.role)}${isMe ? ' <span class="msg__you">you</span>' : ""}</span>
+            <span class="person__sub">${sub}</span>
           </span>
-          ${isMe ? "" : `<span class="person__action"><button class="icon-btn" type="button" data-action="open-dm" data-user="${person.id}" aria-label="Message ${escapeHtml(person.name)}"><svg class="icon" aria-hidden="true"><use href="#i-reply"></use></svg></button></span>`}
+          <span class="person__action">
+            ${roleButton}
+            ${isMe ? "" : `<button class="icon-btn" type="button" data-action="open-dm" data-user="${person.id}" aria-label="Message ${escapeHtml(person.name)}"><svg class="icon" aria-hidden="true"><use href="#i-reply"></use></svg></button>`}
+          </span>
         </li>`;
     })
     .join("");
   const address = document.getElementById("panel-address");
   if (address) address.textContent = state.bootstrap.address || window.location.origin;
+}
+
+export function renderPinnedList(messages) {
+  const list = document.getElementById("pinned-list");
+  if (!list) return;
+  if (!messages.length) {
+    list.innerHTML =
+      '<li class="empty"><span class="empty__title">Nothing pinned</span><p>Pin a message the room should keep in sight.</p></li>';
+    return;
+  }
+  list.innerHTML = messages
+    .map(
+      (message) => `
+      <li class="pinned-item">
+        ${avatarHtml(message, "avatar avatar--lg")}
+        <div class="pinned-item__body">
+          <div class="pinned-item__head">
+            <span class="pinned-item__name">${escapeHtml(message.name)}</span>
+            ${badgeHtml(message)}
+            ${roleBadge(message.role)}
+            <span class="pinned-item__time">${formatTime(message.created_at)}</span>
+          </div>
+          <p class="pinned-item__text">${escapeHtml(message.body || "Attachment")}</p>
+        </div>
+        <button class="icon-btn" type="button" data-action="jump" data-room="${message.room_id}" data-id="${message.id}" data-seq="${message.seq}" aria-label="Go to pinned message">
+          <svg class="icon" aria-hidden="true"><use href="#i-arrow-left"></use></svg>
+        </button>
+      </li>`
+    )
+    .join("");
 }
 
 export function roomMembers(room) {
@@ -317,17 +419,21 @@ function messageRow(message, continued) {
   node.dataset.id = message.id;
   node.dataset.seq = message.seq;
   node.dataset.user = message.user_id;
+  const privileged = canModerate(state.me);
   node.innerHTML = `
-    <div class="msg__avatar" style="${avatarStyle(message.color)}" aria-hidden="true">${initials(message.name)}</div>
+    ${avatarHtml(message, "msg__avatar")}
     <div class="msg__main">
       ${
         continued
           ? ""
           : `<div class="msg__head">
               <span class="msg__name">${escapeHtml(message.name)}</span>
+              ${badgeHtml(message)}
+              ${roleBadge(message.role)}
               ${mine ? '<span class="msg__you">you</span>' : ""}
               <span class="msg__time">${formatTime(message.created_at)}</span>
               ${message.edited_at ? '<span class="msg__edited">edited</span>' : ""}
+              ${message.pinned_at ? '<span class="msg__pinned" title="Pinned message"><svg class="icon icon--sm" aria-hidden="true"><use href="#i-pin"></use></svg>Pinned</span>' : ""}
             </div>`
       }
       ${message.quote ? quoteBlock(message.quote) : ""}
@@ -338,7 +444,9 @@ function messageRow(message, continued) {
         ${message.deleted_at ? "" : `<button class="icon-btn" type="button" data-action="reply" data-id="${message.id}" aria-label="Reply to ${escapeHtml(message.name)}"><svg class="icon" aria-hidden="true"><use href="#i-reply"></use></svg></button>`}
         ${message.deleted_at ? "" : `<button class="icon-btn" type="button" data-action="react" data-id="${message.id}" aria-label="Add a reaction"><svg class="icon" aria-hidden="true"><use href="#i-smile"></use></svg></button>`}
         ${mine && !message.deleted_at ? `<button class="icon-btn" type="button" data-action="edit" data-id="${message.id}" aria-label="Edit message"><svg class="icon" aria-hidden="true"><use href="#i-sliders"></use></svg></button>` : ""}
-        ${mine && !message.deleted_at ? `<button class="icon-btn" type="button" data-action="delete" data-id="${message.id}" aria-label="Delete message"><svg class="icon" aria-hidden="true"><use href="#i-trash"></use></svg></button>` : ""}
+        ${privileged && !message.deleted_at ? `<button class="icon-btn" type="button" data-action="pin" data-id="${message.id}" data-pinned="${message.pinned_at ? "true" : "false"}" aria-label="${message.pinned_at ? "Unpin message" : "Pin message"}"><svg class="icon" aria-hidden="true"><use href="#i-pin"></use></svg></button>` : ""}
+        ${(mine || privileged) && !message.deleted_at ? '<span class="msg__toolbar-divider" aria-hidden="true"></span>' : ""}
+        ${(mine || privileged) && !message.deleted_at ? `<button class="icon-btn" type="button" data-action="delete" data-id="${message.id}" aria-label="Delete message"><svg class="icon" aria-hidden="true"><use href="#i-trash"></use></svg></button>` : ""}
       </div>
     </div>`;
   return node;
@@ -389,8 +497,8 @@ function reactionButtons(message) {
   return entries
     .map(([emoji, users]) => {
       const mine = state.me && users.includes(state.me.id);
-      return `<button class="reaction" type="button" data-action="react-one" data-id="${message.id}" data-emoji="${emoji}" data-mine="${mine ? "true" : "false"}" aria-label="${emoji}, ${users.length} reactions">
-        <span aria-hidden="true">${emoji}</span><span>${users.length}</span>
+      return `<button class="reaction" type="button" data-action="react-one" data-id="${message.id}" data-emoji="${escapeHtml(emoji)}" data-mine="${mine ? "true" : "false"}" aria-label="${escapeHtml(reactionLabel(emoji, users.length))}">
+        ${reactionHtml(emoji)}<span>${users.length}</span>
       </button>`;
     })
     .join("");
@@ -523,8 +631,63 @@ export function renderReactionPicker(target) {
   picker.className = "reaction-picker";
   picker.setAttribute("role", "group");
   picker.setAttribute("aria-label", "Reactions");
-  picker.innerHTML = (state.reactions.length ? state.reactions : ["👍", "🎉", "👀", "✅", "😂", "🙏"])
-    .map((emoji) => `<button type="button" data-action="react-one" data-id="${row.dataset.id}" data-emoji="${emoji}" aria-label="React with ${emoji}">${emoji}</button>`)
+
+  const custom = (state.emoji || [])
+    .map(
+      (item) => `<button class="reaction-picker__emoji reaction-picker__emoji--img" type="button"
+        data-action="react-one" data-id="${row.dataset.id}" data-emoji="${escapeHtml(item.token)}"
+        aria-label="React with :${escapeHtml(item.name)}:">
+        <img src="${escapeHtml(item.url)}" alt="" loading="lazy">
+      </button>`
+    )
     .join("");
+
+  const groups = EMOJI_GROUPS.map(
+    (group) => `<p class="reaction-picker__label">${group.name}</p>
+      <div class="reaction-picker__row">${group.emoji
+        .map(
+          (emoji) => `<button class="reaction-picker__emoji" type="button" data-action="react-one"
+            data-id="${row.dataset.id}" data-emoji="${emoji}" aria-label="React with ${emoji}">${emoji}</button>`
+        )
+        .join("")}</div>`
+  ).join("");
+
+  picker.innerHTML = `
+    ${custom ? `<div class="reaction-picker__custom">${custom}</div>` : ""}
+    <div class="reaction-picker__grid">${groups}</div>
+    <form class="reaction-picker__any">
+      <input class="reaction-picker__input" maxlength="16" placeholder="Type or paste any emoji" aria-label="Any emoji">
+      <button class="btn btn--sm" type="submit">React</button>
+    </form>`;
   row.querySelector(".msg__main").appendChild(picker);
+  picker.querySelector("form").addEventListener("submit", (event) => {
+    event.preventDefault();
+    const value = picker.querySelector("input").value.trim();
+    if (!value) return;
+    document.dispatchEvent(
+      new CustomEvent("hosttalk:react", { detail: { id: row.dataset.id, emoji: value } })
+    );
+  });
+}
+
+export function renderEmojiManager() {
+  const section = document.getElementById("emoji-section");
+  if (section) section.hidden = !(state.me && state.me.role === "host");
+  const list = document.getElementById("emoji-manage");
+  if (!list) return;
+  if (!state.emoji || !state.emoji.length) {
+    list.innerHTML = '<li class="emoji-manage__empty">No custom emoji yet.</li>';
+    return;
+  }
+  list.innerHTML = state.emoji
+    .map(
+      (item) => `<li class="emoji-manage__item">
+        <img class="emoji-manage__img" src="${escapeHtml(item.url)}" alt="" loading="lazy">
+        <span class="emoji-manage__name">:${escapeHtml(item.name)}:</span>
+        <button class="icon-btn" type="button" data-action="delete-emoji" data-id="${escapeHtml(item.id)}" aria-label="Remove :${escapeHtml(item.name)}:">
+          <svg class="icon" aria-hidden="true"><use href="#i-trash"></use></svg>
+        </button>
+      </li>`
+    )
+    .join("");
 }
