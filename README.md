@@ -91,6 +91,8 @@ The 1.x build shipped one room, a five character password check, and a page with
 
 ## Screens
 
+The images below come from the 2.0 build. The interface moved on in 2.2: badges, profile pictures, rooms inside rooms, and a hover toolbar on each message. `docs/SCREENSHOTS.md` records how a fresh set is made.
+
 Every server starts on a front page. Live counts, the room address, and one button into the room. The page needs no script.
 
 ![Front page](static/screenshots/landing.png)
@@ -127,7 +129,7 @@ Terms and privacy pages ship as drafts with the review step marked.
 
 ![Terms page](static/screenshots/terms.png)
 
-The full set sits in `static/screenshots`. These shots predate the 2.2 interface, so they show the room without badges, pictures, or the hover toolbar. Capture notes live in `docs/SCREENSHOTS.md`.
+The full set sits in `static/screenshots`. Capture notes live in `docs/SCREENSHOTS.md`.
 
 ## Project stats
 

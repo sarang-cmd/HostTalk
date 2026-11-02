@@ -77,7 +77,10 @@ def test_the_page_explains_itself_without_script():
 def test_the_copy_keeps_the_demo_label():
     """Screenshots hold placeholder names, so the page has to say so."""
     source = (LANDING / "src" / "content.ts").read_text(encoding="utf-8")
-    assert "Screenshots come from a demo room. The names and messages are placeholders." in source
+    assert "Screenshots come from a demo room" in source
+    assert "The names and messages are placeholders." in source
+    # The shots come from an older build, and the page says which one.
+    assert "2.0 build" in source
     hero = (LANDING / "src" / "components" / "Hero.tsx").read_text(encoding="utf-8")
     assert "A room for the people on your network." in hero
 

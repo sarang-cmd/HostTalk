@@ -1,7 +1,7 @@
 # Screenshot notes
 
 Every screen image in `static/screenshots` comes from a running build. Nothing is a mockup.
-The shots predate the 2.2 interface, so the room pictures show no badges, profile pictures, or hover toolbar.
+Every image here comes from the 2.0 build, so the room pictures show no badges, no profile pictures, the old mark, and the GIPHY key field. A fresh set follows the next capture run.
 The social preview is a type card, not a screenshot. Its markup lives in `docs/social-preview.html`.
 
 ## How the images were made
