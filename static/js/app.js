@@ -1301,8 +1301,8 @@ async function saveBadge() {
   const icon = chosenBadgeIcon();
   const text = byId("settings-badge-text").value.trim();
   showFormError("settings-badge-error", "");
-  if (!icon || !text) {
-    showFormError("settings-badge-error", "Pick an icon and type up to four characters.");
+  if (!icon) {
+    showFormError("settings-badge-error", "Pick an icon. The characters are optional.");
     return;
   }
   try {
