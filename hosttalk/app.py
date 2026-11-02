@@ -157,6 +157,7 @@ def create_app(services: Services) -> Flask:
         return render_template(
             "about.html",
             network=network_summary(request.headers, config.port),
+            local=is_loopback(request.remote_addr or ""),
             **template_context(),
         )
 
@@ -183,11 +184,21 @@ def create_app(services: Services) -> Flask:
 
     @app.get("/terms")
     def terms():
-        return render_template("terms.html", **template_context())
+        return render_template(
+            "terms.html",
+            network=network_summary(request.headers, config.port),
+            local=is_loopback(request.remote_addr or ""),
+            **template_context(),
+        )
 
     @app.get("/privacy")
     def privacy():
-        return render_template("privacy.html", **template_context())
+        return render_template(
+            "privacy.html",
+            network=network_summary(request.headers, config.port),
+            local=is_loopback(request.remote_addr or ""),
+            **template_context(),
+        )
 
     @app.get("/healthz")
     def healthz():

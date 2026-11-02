@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Terms · HostTalk</title>
   <meta name="robots" content="noindex">
+  <meta name="description" content="The draft terms for a HostTalk room. Review them with the host of your room before you rely on them.">
+  <meta name="theme-color" content="#f1f0eb">
   <link rel="icon" href="/static/icons/favicon.ico" sizes="any">
   <link rel="stylesheet" href="/static/css/tokens.css?v={{ static_v }}">
   <link rel="stylesheet" href="/static/css/base.css?v={{ static_v }}">
@@ -22,11 +24,10 @@
       <span>HostTalk</span>
     </a>
     <nav class="site-nav" aria-label="Site">
-      <a href="/room">Open the room</a>
+      <a href="/room">Room</a>
       <a href="/about">How it works</a>
       <a href="/stats">Stats</a>
-      <a href="/about">How it works</a>
-      <a href="/privacy">Privacy</a>
+      {% if local %}<a href="/console">Console</a>{% endif %}
     </nav>
   </header>
 
@@ -68,11 +69,13 @@
   </main>
 
   <footer class="site-foot wrap">
-    <span>HostTalk {{ version }} · Apache 2.0</span>
+    <span>HostTalk {{ version }} · Apache 2.0 · Hosted at {{ network.address }}</span>
     <nav aria-label="Legal">
       <a href="/room">Room</a>
-      <a href="/stats">Stats</a>
       <a href="/about">How it works</a>
+      <a href="/stats">Stats</a>
+      <a href="/console">Host console</a>
+      <a href="/terms">Terms</a>
       <a href="/privacy">Privacy</a>
     </nav>
   </footer>

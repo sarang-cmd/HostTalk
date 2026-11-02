@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>How HostTalk works</title>
+  <title>How it works · HostTalk</title>
   <meta name="description" content="HostTalk is a chat room for one local network. Here is how a message travels, what the server keeps, and what it does not do.">
   <meta name="theme-color" content="#f1f0eb">
   <link rel="icon" href="/static/icons/favicon.ico" sizes="any">
@@ -24,10 +24,10 @@
       <span>HostTalk</span>
     </a>
     <nav class="site-nav" aria-label="Site">
-      <a href="/room">Open the room</a>
+      <a href="/room">Room</a>
+      <a href="/about">How it works</a>
       <a href="/stats">Stats</a>
-      <a href="/terms">Terms</a>
-      <a href="/privacy">Privacy</a>
+      {% if local %}<a href="/console">Console</a>{% endif %}
     </nav>
   </header>
 
@@ -261,6 +261,7 @@ python server.py</code></pre>
     <span>HostTalk {{ version }} · Apache 2.0 · Hosted at {{ network.address }}</span>
     <nav aria-label="Legal">
       <a href="/room">Room</a>
+      <a href="/about">How it works</a>
       <a href="/stats">Stats</a>
       <a href="/console">Host console</a>
       <a href="/terms">Terms</a>
