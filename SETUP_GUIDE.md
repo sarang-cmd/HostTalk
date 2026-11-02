@@ -104,9 +104,12 @@ Each line answers one question:
 [OK  ] LocalSend: 0 device(s) seen
 [OK  ] Host console access: This machine only
 [OK  ] Server clock: 2026-01-01 09:00:00 UTC
+
+Overall: warn
 ```
 
 A warning prints a `fix:` line under it when the check knows the next step.
+The last line sums the run up as `ok`, `warn`, or `fail`.
 
 Warnings are fine. Failures need action before you invite people.
 
