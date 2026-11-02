@@ -239,8 +239,8 @@ def create_app(services: Services) -> Flask:
             "start_url": "/room",
             "scope": "/",
             "display": "standalone",
-            "background_color": "#F2F1EC",
-            "theme_color": "#F2F1EC",
+            "background_color": "#f1f0eb",
+            "theme_color": "#f1f0eb",
             "icons": [
                 {"src": "/static/icons/icon-192.png", "sizes": "192x192", "type": "image/png"},
                 {"src": "/static/icons/icon-512.png", "sizes": "512x512", "type": "image/png"},

@@ -15,8 +15,9 @@
     <a class="brand" href="/">
       <svg class="brand__mark" viewBox="0 0 32 32" aria-hidden="true">
         <rect width="32" height="32" rx="9" fill="var(--ink)"/>
-        <rect class="mark-room" x="9" y="14" width="14" height="9" rx="1.5"/>
-        <circle class="mark-dot" cx="22" cy="10" r="2.4"/>
+        <path class="mark-room" d="M9.4 20 L9.4 26.8 L15.5 20.4 Z"/>
+        <rect class="mark-room" x="6.3" y="11.1" width="19.5" height="10.9" rx="3.1"/>
+        <circle class="mark-dot" cx="25.4" cy="25.3" r="2.4"/>
       </svg>
       <span>HostTalk</span>
     </a>
@@ -37,13 +38,14 @@
     <div class="prose">
       <h2>What the host machine stores</h2>
       <ul>
-        <li>Display names, an internal user id, an assigned color, and a device key per name.</li>
+        <li>Display names, an internal user id, an assigned color, a badge, and a device key per name.</li>
+        <li>Profile pictures you upload, and any custom emoji the host adds.</li>
         <li>Messages, quoted messages, reactions, room names, and direct thread membership.</li>
         <li>Files you upload, with the original filename, content type, size, and a SHA-256 digest.</li>
-        <li>Password hashes for the room and for locked direct threads. HostTalk uses bcrypt and stores no plain passwords.</li>
+        <li>Password hashes for the room, for locked direct threads, and for the host console sign in. HostTalk uses bcrypt and stores no plain passwords.</li>
         <li>A log of display name changes with the time and the requesting IP address.</li>
         <li>Technical logs with timestamps, log level, event name, and sometimes a user name, room name, or IP address.</li>
-        <li>Configuration in <code>config.json</code>, including the port, room name, and an optional GIPHY key.</li>
+        <li>Configuration in <code>config.json</code>, including the port, room name, and an optional KLIPY key.</li>
       </ul>
 
       <h2>What your browser stores</h2>
@@ -56,7 +58,7 @@
       <h2>What leaves the local network</h2>
       <ul>
         <li>Nothing, during normal chat. Messages move between your browser and the host over the local network.</li>
-        <li>GIF search sends the search words to GIPHY through the host, only when someone searches. The API key stays on the host.</li>
+        <li>GIF search sends the search words to KLIPY through the host, only when someone searches. The API key stays on the host. The pictures then load straight from KLIPY.</li>
         <li>Link previews fetch the linked page from the host. The page sees the host's address and a generic browser user agent.</li>
         <li>LocalSend exchanges files with devices on the same network. Those devices see the host's alias, fingerprint, and IP address.</li>
       </ul>

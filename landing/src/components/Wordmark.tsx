@@ -15,8 +15,9 @@ export function Wordmark({ className }: Props) {
         focusable="false"
       >
         <rect width="32" height="32" rx="9" className="fill-ink" />
-        <rect x="9" y="14" width="14" height="9" rx="1.5" className="fill-paper" />
-        <circle cx="22" cy="10" r="2.4" className="fill-accent" />
+        <path d="M9.4 20 L9.4 26.8 L15.5 20.4 Z" className="fill-paper" />
+        <rect x="6.3" y="11.1" width="19.5" height="10.9" rx="3.1" className="fill-paper" />
+        <circle cx="25.4" cy="25.3" r="2.4" className="fill-accent" />
       </svg>
       <span>HostTalk</span>
     </span>

@@ -17,8 +17,9 @@
     <a class="brand" href="/">
       <svg class="brand__mark" viewBox="0 0 32 32" aria-hidden="true">
         <rect width="32" height="32" rx="9" fill="var(--ink)"/>
-        <rect class="mark-room" x="9" y="14" width="14" height="9" rx="1.5"/>
-        <circle class="mark-dot" cx="22" cy="10" r="2.4"/>
+        <path class="mark-room" d="M9.4 20 L9.4 26.8 L15.5 20.4 Z"/>
+        <rect class="mark-room" x="6.3" y="11.1" width="19.5" height="10.9" rx="3.1"/>
+        <circle class="mark-dot" cx="25.4" cy="25.3" r="2.4"/>
       </svg>
       <span>HostTalk</span>
     </a>
@@ -77,7 +78,7 @@
         <div class="feature-list">
           <div>
             <h3>One room, or several</h3>
-            <p>The main room holds everyone. Named rooms hold up to 20 people. Direct threads stay between two.</p>
+            <p>The main room holds everyone. Named rooms hold up to 20 people and can sit inside one another. Direct threads stay between two.</p>
           </div>
           <div>
             <h3>Messages stay here</h3>
@@ -89,11 +90,11 @@
           </div>
           <div>
             <h3>Quotes and reactions</h3>
-            <p>Reply with a quote, add a reaction, edit or delete your own text. A deleted message leaves a quiet placeholder.</p>
+            <p>Reply with a quote, react with any emoji, edit or delete your own text. A deleted message leaves a quiet placeholder.</p>
           </div>
           <div>
             <h3>A console for the host</h3>
-            <p>Checks, people, rooms, logs, settings, and a stop button, in a browser. The console answers on this machine only by default.</p>
+            <p>Checks, people, rooms, logs, settings, and a stop button, in a browser. A host name and host password open it, and it answers on this machine only by default.</p>
           </div>
           <div>
             <h3>Files from phones</h3>
@@ -124,6 +125,7 @@ python server.py</code></pre>
                 <tr><th>launchd</th><td>Plist for a login session on macOS.</td></tr>
                 <tr><th>Docker</th><td>Image and compose file with a fixed data volume.</td></tr>
                 <tr><th>Windows</th><td>Batch launcher for a desktop shortcut.</td></tr>
+                <tr><th>Desktop</th><td>Window and server builds for Windows, macOS, and Linux in the release.</td></tr>
                 <tr><th>Proxy</th><td>Caddy and nginx examples with the stream settings.</td></tr>
               </tbody>
             </table>

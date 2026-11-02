@@ -30,7 +30,7 @@ export type Feature = { title: string; body: string };
 export const features: Feature[] = [
   {
     title: "One room, or several",
-    body: "The main room holds everyone. Named rooms hold up to 20 people. Direct threads stay between two.",
+    body: "The main room holds everyone. Named rooms hold up to 20 people and can sit inside one another. Direct threads stay between two.",
   },
   {
     title: "Messages stay on the host",
@@ -42,7 +42,7 @@ export const features: Feature[] = [
   },
   {
     title: "Quotes, reactions, edits",
-    body: "Reply with a quote, add a reaction, edit or delete your own text. A deleted message leaves a quiet placeholder.",
+    body: "Reply with a quote, react with any emoji, edit or delete your own text. A deleted message leaves a quiet placeholder.",
   },
   {
     title: "A console for the host",
@@ -58,7 +58,7 @@ export const features: Feature[] = [
   },
   {
     title: "GIF search, when you add a key",
-    body: "Search runs through the host, so the GIPHY key stays on the server. Search is off until a key is set in the console.",
+    body: "Search runs through the host, so the KLIPY key stays on the server. Search is off until a key is set in the console.",
   },
 ];
 
@@ -110,7 +110,7 @@ export const limits: Limit[] = [
   },
   {
     title: "Third-party requests are explicit",
-    body: "A GIF search sends the words to GIPHY. A link preview fetches the page from the host. Nothing else leaves the network unless you post a link.",
+    body: "A GIF search sends the words to KLIPY. A link preview fetches the page from the host. Nothing else leaves the network unless you post a link.",
   },
 ];
 

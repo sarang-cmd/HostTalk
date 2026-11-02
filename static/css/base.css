@@ -165,11 +165,12 @@ ol {
   flex: none;
 }
 
-.brand__mark .mark-room {
+/* The mark is drawn in templates, so one rule set covers every copy. */
+.mark-room {
   fill: var(--paper);
 }
 
-.brand__mark .mark-dot {
+.mark-dot {
   fill: var(--accent);
 }
 
