@@ -154,3 +154,48 @@ def test_every_screenshot_in_the_table_exists():
         if not (ROOT / "static" / "screenshots" / name).exists() and not (ROOT / name).exists()
     ]
     assert missing == []
+
+
+def test_the_build_workflow_validates():
+    """A quote inside a condition stops GitHub from starting any job.
+
+    The build sat broken for a day because the publish job carried
+    `if: startsWith(github.ref, 'refs/tags/')`. Every push recorded a failed run
+    with no jobs. A tag push now uses a shell check instead, and this test keeps
+    quoted conditions out.
+    """
+    import yaml
+
+    workflow = yaml.safe_load(read(".github/workflows/build.yml"))
+    jobs = workflow["jobs"]
+    assert {"build-windows", "build-macos", "build-linux", "publish"} <= set(jobs)
+
+    for name, job in jobs.items():
+        assert job.get("runs-on"), f"{name} has no runner"
+        entries = [job, *job.get("steps", [])]
+        for entry in entries:
+            condition = entry.get("if")
+            if condition:
+                assert "'" not in condition and '"' not in condition, f"{name} quotes a condition"
+
+    publish = jobs["publish"]
+    steps = " ".join(str(step.get("run", "")) for step in publish["steps"])
+    assert "gh release create" in steps
+    assert "gh release upload" in steps
+
+    # A tag push has to reach the workflow at all.
+    assert "tags:" in read(".github/workflows/build.yml")
+
+
+def test_the_icon_sources_cover_every_size():
+    """Windows takes icon.ico, macOS builds its icns from the square sources."""
+    from PIL import Image
+
+    ico = Image.open(ROOT / "icon.ico")
+    sizes = {size for size in ico.info.get("sizes", set())}
+    assert (256, 256) in sizes, "Windows wants a 256 frame"
+    assert (16, 16) in sizes, "the tab and taskbar want a 16 frame"
+
+    for name, expected in (("icon-512.png", 512), ("icon-1024.png", 1024)):
+        image = Image.open(ROOT / "static" / "icons" / name)
+        assert image.size == (expected, expected)
