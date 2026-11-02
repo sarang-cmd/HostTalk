@@ -1520,8 +1520,11 @@ body.app {
 .person__meta {
   min-width: 0;
   flex: 1;
+  display: grid;
+  gap: 1px;
 }
 
+/* Name and badges share a line. Long names clip, so the status stays put. */
 .person__name {
   font-size: var(--text-sm);
   font-weight: 500;
@@ -1531,8 +1534,13 @@ body.app {
 }
 
 .person__sub {
+  display: block;
   font-size: 11px;
+  line-height: 1.35;
   color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .person__action {
