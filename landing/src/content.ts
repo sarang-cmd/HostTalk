@@ -20,10 +20,10 @@ export const facts: Fact[] = [
 
 /** The screenshots hold placeholder names, so the page says so. */
 export const demoNote =
-  "Screenshots come from a demo room. The names and messages are placeholders.";
+  "Screenshots come from a demo room on the 2.0 build. The names and messages are placeholders.";
 
 export const heroCaption =
-  "The room at laptop width. Rooms, quotes, reactions, an image attachment, and who is here.";
+  "The room at laptop width. Rooms, quotes, reactions, an image attachment, and who is here. Captured on the 2.0 build.";
 
 export type Feature = { title: string; body: string };
 
