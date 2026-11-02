@@ -18,6 +18,7 @@ def clean_environment(monkeypatch):
         "HOSTTALK_LOCALSEND",
         "HOSTTALK_LS_PIN",
         "SERVER_PASSWORD",
+        "KLIPY_API_KEY",
         "GIPHY_API_KEY",
     ):
         monkeypatch.delenv(name, raising=False)
