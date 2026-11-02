@@ -1,5 +1,8 @@
 # HostTalk Feature Expansion & LocalSend Integration Plan
 
+> Superseded. This is the original plan, kept for context. `README.md` and `CHANGELOG.md`
+> describe the build as it ships. Where this file and the code disagree, the code wins.
+
 **Session ID:** ses_fbd39fb86ffenvrEY72lbjYlj3
 **Last Updated:** August 27, 2026
 
