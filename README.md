@@ -457,6 +457,8 @@ Host routes need the console session cookie and, by default, a loopback address.
 config.json      settings, password hash, secret key (0600)
 hosttalk.db      messages, rooms, people, attachments, reactions
 uploads/         files, random names
+uploads/avatars  profile pictures, one per person
+uploads/emoji    custom emoji the host added
 logs/            hosttalk.jsonl, rotated at 2 MB, three backups
 ```
 

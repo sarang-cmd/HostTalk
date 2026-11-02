@@ -142,3 +142,15 @@ def test_the_layout_names_every_module():
     real = {path.name for path in (ROOT / "hosttalk").glob("*.py") if not path.name.startswith("__")}
     assert sorted(real - listed) == [], "a module is missing from the layout"
     assert sorted(listed - real) == [], "the layout names a module that is gone"
+
+
+def test_every_screenshot_in_the_table_exists():
+    block = read("docs/SCREENSHOTS.md").split("## Files")[1].split("## Social preview")[0]
+    names = re.findall(r"\| `([^`]+)`", block)
+    assert names, "the screenshot table went missing"
+    missing = [
+        name
+        for name in names
+        if not (ROOT / "static" / "screenshots" / name).exists() and not (ROOT / name).exists()
+    ]
+    assert missing == []

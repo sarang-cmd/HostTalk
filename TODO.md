@@ -51,9 +51,14 @@ A running list for the 2.2 build. Checked items are in the tree.
 - [x] One version string across the app, the container, and the service worker
 - [x] The sent tone plays, and the files carry real names
 - [x] The scripts parse before they ship
+- [x] Every public page carries the same header and footer
+- [x] The command block and the layout name everything in the code
+- [x] The screenshot table points at files that exist
+- [x] The stale manifest file is gone
+- [x] The release build runs again
 
 ## Checks
 
-- [x] 119 tests pass
+- [x] 124 tests pass
 - [x] Ruff clean
 - [x] Every page answers 200 on a fresh data folder
