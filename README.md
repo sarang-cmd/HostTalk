@@ -337,7 +337,7 @@ Settings live in `config.json` inside the data folder, mode 0600. The console ed
 | Room name | Front room | yes | `HOSTTALK_ROOM_NAME` |
 | Files limit | 20 MB | yes | `HOSTTALK_MAX_UPLOAD_MB` |
 | Room member cap | 20 | yes | `HOSTTALK_MAX_MEMBERS` |
-| Default theme | auto | yes | |
+| Default theme | auto | yes | `HOSTTALK_THEME` |
 | Log level | INFO | yes | `LOG_LEVEL` |
 | Link previews | on | yes | |
 | GIF search | on, no key | yes | `KLIPY_API_KEY` |
@@ -356,15 +356,16 @@ Changing the port or the bind address asks for a restart. The console says so an
 ## Command line
 
 ```
-hosttalk serve [--port 7284] [--host 0.0.0.0] [--data-dir PATH]
-               [--headless] [--log-level INFO] [--no-localsend] [--reload]
-hosttalk app [--port 7284] [--data-dir PATH] [--no-window] [--no-browser]
-hosttalk setup [--password ...] [--room ...] [--port ...] [--non-interactive]
-hosttalk config show | path | get KEY | set KEY VALUE
-hosttalk reset-password [--password ...]
-hosttalk doctor
+hosttalk serve [--port 7284] [--host 0.0.0.0] [--data-dir PATH] [--password ...] [--headless] [--no-browser] [--open-console] [--log-level INFO] [--no-localsend] [--reload]
+hosttalk app [--port 7284] [--host 0.0.0.0] [--data-dir PATH] [--no-window] [--no-browser]
+hosttalk setup [--password ...] [--room ...] [--port ...] [--data-dir PATH] [--non-interactive]
+hosttalk config show | path | get KEY | set KEY VALUE [--data-dir PATH]
+hosttalk reset-password [--password ...] [--data-dir PATH]
+hosttalk doctor [--data-dir PATH]
 hosttalk version
 ```
+
+A command with no flags still reads the data folder from `HOSTTALK_HOME`, so a service file can pass the folder in the environment instead.
 
 `server.py` is a thin entry which calls `hosttalk.cli.main`, so `python server.py` behaves like `python -m hosttalk serve`.
 
@@ -530,9 +531,14 @@ hosttalk/           server package
   previews.py       guarded link previews
   gifs.py           KLIPY client with cache
   api_emoji.py      custom emoji upload and serve
+  api_common.py     serializers shared by the blueprints
   desktop.py        server, control window, app window
+  logging_setup.py  JSON line logs, rotation, log reading
+  netinfo.py        LAN address, Wi-Fi name, invite URL
   presence.py       who is here
+  services.py       store, broker, presence, and console wiring
   stats.py          counts for the stats page and the front page
+  version.py        version and codename
 static/
   css               tokens, base, app, console, marketing
   js                core, emoji, render, app, console
@@ -543,7 +549,7 @@ static/
 templates/          landing, room, stats, console, about, terms, privacy, error
 deploy/             systemd, launchd, Docker, proxies
 tests/              pytest suite
-docs/               notes on screenshots and the upgrade
+docs/               notes on the screenshots and the social card
 landing/            React and Tailwind source for the project page
 site/               built pages, committed, served as plain files
 ```

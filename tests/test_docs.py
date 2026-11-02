@@ -76,3 +76,69 @@ def test_the_palette_size_matches_the_readme():
     block = re.search(r"COLOR_GRID = \[([^\]]*)\]", read("hosttalk/auth.py"), re.S).group(1)
     colors = re.findall(r"#[0-9A-Fa-f]{6}", block)
     assert f"{len(colors)} step palette" in read("README.md")
+
+
+def command_block() -> str:
+    return read("README.md").split("## Command line")[1].split("## HTTP API")[0]
+
+
+def documented_commands() -> dict[str, set[str]]:
+    """Each line of the block opens with a command and names its flags."""
+    found: dict[str, set[str]] = {}
+    for line in command_block().splitlines():
+        line = line.strip()
+        if not line.startswith("hosttalk "):
+            continue
+        command = line.split()[1]
+        found[command] = set(re.findall(r"--[a-z-]+", line))
+    return found
+
+
+def parser_flag_groups() -> dict[str, list[set[str]]]:
+    """Ask the command line itself, so the flags come from the code.
+
+    A line such as ``--host BIND, --bind BIND`` carries two names for one
+    setting, so each line becomes one group. One name in the group is enough.
+    """
+    import subprocess
+    import sys
+
+    root = Path(__file__).resolve().parent.parent
+    groups: dict[str, list[set[str]]] = {}
+    for command in ["serve", "app", "setup", "config", "reset-password", "doctor", "version"]:
+        result = subprocess.run(
+            [sys.executable, "-m", "hosttalk", command, "--help"],
+            cwd=root,
+            capture_output=True,
+            text=True,
+            timeout=120,
+        )
+        found: list[set[str]] = []
+        for line in result.stdout.splitlines():
+            if not line.startswith("  -"):
+                continue
+            flags = set(re.findall(r"--[a-z][a-z-]*", line)) - {"--help"}
+            if flags:
+                found.append(flags)
+        groups[command] = found
+    return groups
+
+
+def test_the_command_block_names_every_flag():
+    documented = documented_commands()
+    groups = parser_flag_groups()
+    assert sorted(groups) == sorted(documented)
+    for command, group_list in groups.items():
+        for group in group_list:
+            assert group & documented[command], f"{command} hides {sorted(group)}"
+        known = set().union(*group_list) if group_list else set()
+        assert sorted(documented[command] - known) == [], f"{command} names a flag the code lacks"
+
+
+def test_the_layout_names_every_module():
+    block = read("README.md").split("## Repository layout")[1].split("## Credits")[0]
+    listed = set(re.findall(r"^  (\w+\.py)\s{2,}", block, re.M))
+    # Package plumbing is not something a reader navigates to, so it stays out.
+    real = {path.name for path in (ROOT / "hosttalk").glob("*.py") if not path.name.startswith("__")}
+    assert sorted(real - listed) == [], "a module is missing from the layout"
+    assert sorted(listed - real) == [], "the layout names a module that is gone"
