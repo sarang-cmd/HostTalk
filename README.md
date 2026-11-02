@@ -192,7 +192,7 @@ phone (LocalSend) --UDP 53317 + HTTP--> same Flask app
 
 ### Storage
 
-SQLite in WAL mode, ten tables: `users`, `rooms`, `room_members`, `attachments`, `messages`, `reactions`, `invites`, `custom_emoji`, `nickname_log`, `meta`. Message sequence numbers come from a per room counter, so pagination uses `before_seq` and stays stable while people type.
+SQLite in WAL mode, 10 tables: `users`, `rooms`, `room_members`, `attachments`, `messages`, `reactions`, `invites`, `custom_emoji`, `nickname_log`, `meta`. Message sequence numbers come from a per room counter, so pagination uses `before_seq` and stays stable while people type.
 
 Uploads go to `uploads/` with a random name. The database keeps the original filename, MIME type, byte count, and digest.
 
@@ -493,7 +493,9 @@ Run HostTalk on hardware you control, on a network you trust.
 .venv/bin/pytest
 ```
 
-The suite covers config validation, store behaviour, the HTTP surface, the password flow, rate limits, uploads, preview guarding, the room member rules, the byte and duration formatting on the stats page, the source counts, the page with a closed database, and the 2.2 additions: house names, device identity, pictures, roles, pins, badges, custom emoji, rooms inside rooms, and the four host controls. GitHub Actions runs the same commands, then boots the app and asks `/healthz` for a real answer.
+The suite covers config validation, store behaviour, the HTTP surface, the password flow, rate limits, uploads, preview guarding, the room member rules, the byte and duration formatting on the stats page, the source counts, the page with a closed database, and the 2.2 additions: house names, device identity, pictures, roles, pins, badges, custom emoji, rooms inside rooms, and the four host controls.
+
+`tests/test_docs.py` reads the documents and checks the claims a reader acts on: one version string across the app, the container, and the service worker, no page naming the old GIF service, a route table that matches the code, the table count, and the palette size. GitHub Actions runs the same commands, then boots the app and asks `/healthz` for a real answer.
 
 ## Troubleshooting
 

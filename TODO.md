@@ -52,6 +52,6 @@ A running list for the 2.2 build. Checked items are in the tree.
 
 ## Checks
 
-- [x] 104 tests pass
+- [x] 113 tests pass
 - [x] Ruff clean
 - [x] Every page answers 200 on a fresh data folder
