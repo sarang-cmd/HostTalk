@@ -50,7 +50,6 @@ let activeTypingTimer = 0;
 let confirmHandler = null;
 let passwordHandler = null;
 let pendingJoinCode = "";
-let receivedAudio = null;
 
 function byId(id) {
   return document.getElementById(id);

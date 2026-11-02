@@ -49,9 +49,11 @@ A running list for the 2.2 build. Checked items are in the tree.
 - [x] The share card shows 2.2.0 and the new mark
 - [x] The screenshots carry the build they came from
 - [x] One version string across the app, the container, and the service worker
+- [x] The sent tone plays, and the files carry real names
+- [x] The scripts parse before they ship
 
 ## Checks
 
-- [x] 113 tests pass
+- [x] 119 tests pass
 - [x] Ruff clean
 - [x] Every page answers 200 on a fresh data folder
