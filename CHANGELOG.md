@@ -18,7 +18,7 @@ Notable changes per release. Earlier releases are in the git history.
 - Any emoji works as a reaction.
 - The host adds custom emoji pictures. Everyone reacts with them.
 - Host and moderators pin messages. The pinned sheet jumps back to the source.
-- A short synthesized tone plays when a message leaves.
+- A short tone plays when a message leaves, and another when one arrives.
 
 ### Rooms
 

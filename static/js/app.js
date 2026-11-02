@@ -499,7 +499,7 @@ function ingestMessage(message, { fromSelf = false, sound = true } = {}) {
   }
   const room = state.rooms.find((entry) => entry.id === message.room_id);
   if (room) room.last_seq = Math.max(room.last_seq || 0, message.seq);
-  if (!fromSelf && sound && state.prefs.sounds) playReceived();
+  if (!fromSelf && sound) playReceived();
 }
 
 function addMessage(message) {
@@ -1013,6 +1013,7 @@ async function deliver({ body, kind, attachment = null, input = null }) {
       else updateMessageNode(data.message);
     }
     markRead(room.id);
+    playSent();
   } catch (error) {
     removeMessageNode(temp.id);
     state.messages.set(room.id, (state.messages.get(room.id) || []).filter((entry) => entry.id !== temp.id));
@@ -1718,77 +1719,38 @@ function showThreadSkeleton() {
 }
 
 let sentAudio = null;
-let audioContext = null;
+let receivedAudio = null;
 
-function audio() {
-  if (!audioContext) {
-    const Factory = window.AudioContext || window.webkitAudioContext;
-    if (!Factory) return null;
-    audioContext = new Factory();
-  }
-  if (audioContext.state === "suspended") audioContext.resume().catch(() => {});
-  return audioContext;
-}
-
-/**
- * The sent tone. A short rising swoosh with a soft pop under it,
- * built here so the file carries no licensed audio.
- */
-function playSent() {
-  const ctx = audio();
-  if (!ctx) return;
+/** One short tone per direction. Both files ship with the app. */
+function tone(kind) {
+  if (!state.prefs.sounds) return;
   try {
-    const now = ctx.currentTime;
-    const duration = 0.26;
-    const buffer = ctx.createBuffer(1, Math.floor(ctx.sampleRate * duration), ctx.sampleRate);
-    const data = buffer.getChannelData(0);
-    for (let index = 0; index < data.length; index += 1) {
-      data[index] = Math.random() * 2 - 1;
+    if (kind === "sent") {
+      if (!sentAudio) {
+        sentAudio = new Audio("/static/sent.mp3");
+        sentAudio.volume = 0.22;
+      }
+      sentAudio.currentTime = 0;
+      sentAudio.play().catch(() => {});
+      return;
     }
-    const source = ctx.createBufferSource();
-    source.buffer = buffer;
-    const band = ctx.createBiquadFilter();
-    band.type = "bandpass";
-    band.Q.value = 1.2;
-    band.frequency.setValueAtTime(850, now);
-    band.frequency.exponentialRampToValueAtTime(2400, now + 0.1);
-    band.frequency.exponentialRampToValueAtTime(720, now + duration);
-    const gain = ctx.createGain();
-    gain.gain.setValueAtTime(0.0001, now);
-    gain.gain.exponentialRampToValueAtTime(0.11, now + 0.05);
-    gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
-    source.connect(band).connect(gain).connect(ctx.destination);
-    source.start(now);
-    source.stop(now + duration);
-
-    const pop = ctx.createOscillator();
-    pop.type = "sine";
-    pop.frequency.setValueAtTime(430, now);
-    pop.frequency.exponentialRampToValueAtTime(190, now + 0.12);
-    const popGain = ctx.createGain();
-    popGain.gain.setValueAtTime(0.045, now);
-    popGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.14);
-    pop.connect(popGain).connect(ctx.destination);
-    pop.start(now);
-    pop.stop(now + 0.15);
-  } catch (error) {
-    /* Audio is optional. */
-  }
-}
-
-function playReceived() {
-  if (sentAudio) sentAudio.volume = 0.28;
-
-  try {
     if (!receivedAudio) {
-      receivedAudio = new Audio("/static/recieved.mp3");
-      receivedAudio.volume = 0.28;
+      receivedAudio = new Audio("/static/received.mp3");
+      receivedAudio.volume = 0.24;
     }
     receivedAudio.currentTime = 0;
     receivedAudio.play().catch(() => {});
   } catch (error) {
     /* Audio is optional. */
   }
+}
+
+function playSent() {
+  tone("sent");
+}
+
+function playReceived() {
+  tone("received");
 }
 
 function throttle(fn, wait) {
