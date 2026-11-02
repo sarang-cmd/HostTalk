@@ -154,3 +154,55 @@ def test_every_screenshot_in_the_table_exists():
         if not (ROOT / "static" / "screenshots" / name).exists() and not (ROOT / name).exists()
     ]
     assert missing == []
+
+
+def test_the_build_workflow_starts_every_job():
+    """A quote inside a condition stops GitHub from starting any job.
+
+    The build sat broken for a day because the publish job carried
+    `if: startsWith(github.ref, 'refs/tags/')`. Every push recorded a failed run
+    with no jobs, so no tag could publish. A tag push now checks the ref type in
+    the shell. This test keeps quoted conditions out and the jobs named.
+    """
+    workflow = read(".github/workflows/build.yml")
+    assert workflow.startswith("name: Build HostTalk")
+    assert "tags:" in workflow, "a tag push has to reach the workflow"
+
+    for line in workflow.splitlines():
+        stripped = line.strip()
+        if stripped.startswith("if:"):
+            assert "'" not in stripped and '"' not in stripped, stripped
+
+    for job in ("build-windows", "build-macos", "build-linux", "publish"):
+        assert f"\n  {job}:\n" in workflow, f"{job} went missing"
+
+    assert "gh release create" in workflow
+    assert "gh release upload" in workflow
+    # The release is created from the tag, not from a branch name.
+    assert 'if [ "${GITHUB_REF_TYPE}" != "tag" ]' in workflow
+
+
+def test_the_icon_sources_cover_every_size():
+    """Windows takes icon.ico, macOS builds its icns from the square sources.
+
+    Read the headers with the standard library, because the test job installs
+    no imaging package.
+    """
+    import struct
+
+    ico = (ROOT / "icon.ico").read_bytes()
+    reserved, kind, count = struct.unpack("<HHH", ico[:6])
+    assert (reserved, kind) == (0, 1), "not an icon file"
+    widths = set()
+    for index in range(count):
+        entry = ico[6 + index * 16 : 22 + index * 16]
+        width = entry[0] or 256
+        widths.add(width)
+    assert 256 in widths, "Windows wants a 256 frame"
+    assert 16 in widths, "the tab and taskbar want a 16 frame"
+
+    for name, expected in (("icon-512.png", 512), ("icon-1024.png", 1024)):
+        png = (ROOT / "static" / "icons" / name).read_bytes()
+        assert png[:8] == b"\x89PNG\r\n\x1a\n", f"{name} is not a png"
+        width, height = struct.unpack(">II", png[16:24])
+        assert (width, height) == (expected, expected), name

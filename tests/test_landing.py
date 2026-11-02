@@ -79,8 +79,14 @@ def test_the_copy_keeps_the_demo_label():
     source = (LANDING / "src" / "content.ts").read_text(encoding="utf-8")
     assert "Screenshots come from a demo room" in source
     assert "The names and messages are placeholders." in source
-    # The shots come from an older build, and the page says which one.
-    assert "2.0 build" in source
+    # The page names the build the shots came from, so a stale set is visible.
+    # It reads the version from the server package at build time.
+    from hosttalk.version import __version__
+
+    assert "from the server package" in source
+    assert "__HOSTTALK_VERSION__" in source
+    built = "\n".join(path.read_text(encoding="utf-8") for path in (SITE / "assets").glob("*.js"))
+    assert f'"{__version__}"' in built
     hero = (LANDING / "src" / "components" / "Hero.tsx").read_text(encoding="utf-8")
     assert "A room for the people on your network." in hero
 
