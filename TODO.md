@@ -38,8 +38,20 @@ A running list for the 2.2 build. Checked items are in the tree.
 - [x] Build workflow for Windows, macOS, and Linux
 - [x] README and docs for the new parts
 
+## Consistency pass
+
+- [x] Every page that named GIPHY names KLIPY
+- [x] The privacy note lists pictures, badges, and the host password hash
+- [x] Setup copy names six fields, not four
+- [x] The doctor sample copies the real check list
+- [x] The API table lists all 67 routes
+- [x] The table count reads ten
+- [x] The share card shows 2.2.0 and the new mark
+- [x] The screenshots carry the build they came from
+- [x] One version string across the app, the container, and the service worker
+
 ## Checks
 
-- [x] 103 tests pass
+- [x] 104 tests pass
 - [x] Ruff clean
 - [x] Every page answers 200 on a fresh data folder
