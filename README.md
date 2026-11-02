@@ -269,7 +269,7 @@ For the window, run `.venv/bin/python desktop.py`, or `hosttalk app`. The macOS 
 - **Closing.** The window asks before it stops the room. The data folder is untouched.
 - **No Tk.** On a machine without Tk, the app runs as a server and opens the browser.
 
-Builds run in `.github/workflows/build.yml` on a tag. Each build produces an app and a server binary. The Windows exe takes `icon.ico` and the macOS app takes an `icns` made from the 512 px mark. The control window loads `static/icons/icon-192.png` on every platform.
+Builds run in `.github/workflows/build.yml` on a tag and land on the release page as one zip per platform. Each zip holds an app and a server binary. The Windows exe takes `icon.ico`, and the macOS app takes an `icns` built from the 1024 px mark. The control window loads `static/icons/icon-192.png` on every platform.
 
 ### Container
 
