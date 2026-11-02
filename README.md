@@ -54,7 +54,7 @@ The 1.x build shipped one room, a five character password check, and a page with
 - **Custom emoji.** The host uploads small pictures as named emoji. Everyone reacts with them.
 - **Pinned messages.** The host and moderators pin a message. The pinned sheet jumps back to it.
 - **Hover toolbar.** Reply, react, edit, pin, and delete sit in a floating row that appears on hover, with a divider before delete.
-- **Sent tone.** A short synthesized swoosh plays when a message leaves. Nothing licensed ships with the app.
+- **Two tones.** A short tone plays when a message leaves, and another when one arrives. Both ship as small files under `static/`, and the Sounds switch turns them off.
 - **Edit and delete.** Authors edit or delete their own text. Delete leaves a quiet placeholder so the thread keeps its shape.
 - **Search.** The search sheet queries the rooms you belong to and jumps to the match.
 - **Link previews.** The server fetches a page title, description, and image. Private and loopback addresses are refused before any request leaves the machine.

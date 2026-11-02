@@ -210,8 +210,10 @@ export function avatarHtml(person, className = "avatar", { lazy = true } = {}) {
 export function badgeHtml(person) {
   const icon = (person && person.badge_icon) || "";
   const text = (person && person.badge_text) || "";
-  if (!icon || !text) return "";
-  return `<span class="badge" title="Badge"><svg class="icon icon--xs" aria-hidden="true"><use href="#i-${escapeHtml(icon)}"></use></svg>${escapeHtml(text)}</span>`;
+  // The server keeps an icon with empty text, so the pill shows the icon alone.
+  if (!icon) return "";
+  const label = text ? escapeHtml(text) : "";
+  return `<span class="badge" title="Badge"><svg class="icon icon--xs" aria-hidden="true"><use href="#i-${escapeHtml(icon)}"></use></svg>${label}</span>`;
 }
 
 export function roleLabel(role) {
