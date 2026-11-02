@@ -37,7 +37,7 @@ The room text is demo copy. "Front room", "Kitchen plans", and the three names a
 | `stats.png`, `stats-full.png` | Project stats at 1440 wide, viewport and full page |
 | `stats-mobile.png` | Project stats at phone width |
 | `project-page.png` | The built project page at 1440 wide, full page |
-| `social-preview.png` | The 1280 by 640 card GitHub shows for a shared link |
+| `docs/social-preview.png` | The 1280 by 640 card GitHub shows for a shared link. It sits in `docs`, not here |
 | `console.png` | Host console at 1440 wide |
 | `console-full.png` | Host console, full page |
 | `console-mobile.png` | Host console at phone width |
