@@ -17,8 +17,9 @@
     <a class="brand" href="/">
       <svg class="brand__mark" viewBox="0 0 32 32" aria-hidden="true">
         <rect width="32" height="32" rx="9" fill="var(--ink)"/>
-        <rect class="mark-room" x="9" y="14" width="14" height="9" rx="1.5"/>
-        <circle class="mark-dot" cx="22" cy="10" r="2.4"/>
+        <path class="mark-room" d="M9.4 20 L9.4 26.8 L15.5 20.4 Z"/>
+        <rect class="mark-room" x="6.3" y="11.1" width="19.5" height="10.9" rx="3.1"/>
+        <circle class="mark-dot" cx="25.4" cy="25.3" r="2.4"/>
       </svg>
       <span>HostTalk</span>
     </a>
@@ -135,7 +136,11 @@
         <div class="feature-list">
           <div>
             <h3>Rooms and direct threads</h3>
-            <p>One main room for the network. Named rooms hold up to 20 people. Direct threads stay private between two people and take a password.</p>
+            <p>One main room for the network. Named rooms hold up to 20 people and can sit inside one another, each with its own password. Direct threads stay private between two people.</p>
+          </div>
+          <div>
+            <h3>Names, pictures, and badges</h3>
+            <p>A browser keeps its name, picture, role, and badge. Someone who joins without a name becomes John Appleseed. Badges carry one icon and up to four characters.</p>
           </div>
           <div>
             <h3>Files up to 20 MB</h3>
@@ -143,7 +148,7 @@
           </div>
           <div>
             <h3>Quotes, reactions, edits</h3>
-            <p>Reply to a message with its quote attached. Add one of ten reactions. Edit or delete your own messages; the room keeps a quiet placeholder.</p>
+            <p>Reply to a message with its quote attached. React with any emoji, or with pictures the host adds. Edit or delete your own messages; the room keeps a quiet placeholder.</p>
           </div>
           <div>
             <h3>Link previews with a guard</h3>
@@ -151,7 +156,7 @@
           </div>
           <div>
             <h3>GIF search when you add a key</h3>
-            <p>Search goes through the server to GIPHY. The key stays on the host. GIF search is off until a key is added in the console.</p>
+            <p>Search goes through the server to KLIPY. The key stays on the host. GIF search is off until a key is added in the console.</p>
           </div>
           <div>
             <h3>LocalSend devices</h3>
@@ -159,7 +164,7 @@
           </div>
           <div>
             <h3>A console for the host</h3>
-            <p>Checks, settings, logs, people, rooms, exports, and a stop control. The console listens on this machine only by default.</p>
+            <p>Checks, settings, logs, people, rooms, and exports, plus room controls and a stop button. A host name and host password open it, and it listens on this machine only by default.</p>
           </div>
           <div>
             <h3>SQLite and JSON logs</h3>
@@ -192,7 +197,7 @@
           </div>
           <div>
             <dt>Third-party requests are explicit</dt>
-            <dd>A GIF search sends the words to GIPHY. A link preview fetches the page from the host. Nothing else leaves the network unless you post a link.</dd>
+            <dd>A GIF search sends the words to KLIPY. A link preview fetches the page from the host. Nothing else leaves the network unless you post a link.</dd>
           </div>
         </dl>
       </section>
@@ -222,6 +227,7 @@ python server.py</code></pre>
                 <tr><th><code>--data-dir</code></th><td>Move the database, uploads, and logs.</td></tr>
                 <tr><th><code>--headless</code></th><td>Do not open a browser. Use with a service.</td></tr>
                 <tr><th><code>--no-localsend</code></th><td>Turn discovery off for this run.</td></tr>
+                <tr><th><code>app</code></th><td>Start the room with the desktop window.</td></tr>
                 <tr><th><code>setup</code></th><td>Set the password without the browser.</td></tr>
                 <tr><th><code>doctor</code></th><td>Check the network, port, and data folder.</td></tr>
                 <tr><th><code>config</code></th><td>Read or set a value in config.json.</td></tr>

@@ -183,7 +183,7 @@ def command_config(args: argparse.Namespace) -> int:
     if not args.key:
         print("Add a key, for example: hosttalk config get port")
         return 1
-    if args.key in {"giphy_key", "klipy_key", "password_hash", "host_password_hash"}:
+    if args.key in {"klipy_key", "password_hash", "host_password_hash", "secret_key"}:
         print("That key is write-only. Set it in the host console.")
         return 1
     if args.action == "get":

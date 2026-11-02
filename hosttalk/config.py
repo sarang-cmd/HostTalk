@@ -185,8 +185,10 @@ class Config:
             self.values["console_local_only"] = coerce_bool(env["HOSTTALK_CONSOLE_LOCAL_ONLY"])
         if env.get("LOG_LEVEL"):
             self.values["log_level"] = coerce_level(env["LOG_LEVEL"])
-        if env.get("KLIPY_API_KEY"):
-            self.values["klipy_key"] = env["KLIPY_API_KEY"].strip()
+        # The old variable name still reads, so an existing .env keeps working.
+        gif_key = env.get("KLIPY_API_KEY") or env.get("GIPHY_API_KEY")
+        if gif_key:
+            self.values["klipy_key"] = gif_key.strip()
         if env.get("HOSTTALK_LOCALSEND"):
             self.values["localsend"]["enabled"] = coerce_bool(env["HOSTTALK_LOCALSEND"])
         if env.get("HOSTTALK_LS_PIN"):

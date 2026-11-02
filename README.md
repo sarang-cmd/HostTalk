@@ -70,7 +70,7 @@ The 1.x build shipped one room, a five character password check, and a page with
 
 ### Host tools
 
-- **A real console.** `/console` shows checks, people, rooms, logs, settings, LocalSend state, backups, and a stop button. It runs in a browser and replaces the terminal.
+- **A real console.** `/console` shows checks, people, rooms, logs, settings, LocalSend state, exports, and a stop button. It runs in a browser and replaces the terminal.
 - **Host sign in.** A host name and a host password, separate from the join password. Both change on the hosting machine only.
 - **Room controls.** Lock the room to new people, set read only, set slow mode, and post a notice above the thread.
 - **Role control.** The people table carries a role menu for every account.
@@ -81,7 +81,7 @@ The 1.x build shipped one room, a five character password check, and a page with
 ### Network tools
 
 - **LocalSend interop.** The server announces itself over multicast on UDP 53317 and answers the LocalSend v2 protocol. Files a phone sends land in the main room. The console lists devices seen on the network.
-- **Doctor command.** `python -m hosttalk doctor` checks the port, the data folder, free space, the network address, and the GIF key before you invite anyone.
+- **Doctor command.** `python -m hosttalk doctor` checks the port, the data folder, free space, the network address, the GIF key, and the console reach before you invite anyone.
 
 ### Pages
 
@@ -127,7 +127,7 @@ Terms and privacy pages ship as drafts with the review step marked.
 
 ![Terms page](static/screenshots/terms.png)
 
-The full set sits in `static/screenshots`. Capture notes live in `docs/SCREENSHOTS.md`.
+The full set sits in `static/screenshots`. These shots predate the 2.2 interface, so they show the room without badges, pictures, or the hover toolbar. Capture notes live in `docs/SCREENSHOTS.md`.
 
 ## Project stats
 
@@ -190,7 +190,7 @@ phone (LocalSend) --UDP 53317 + HTTP--> same Flask app
 
 ### Storage
 
-SQLite in WAL mode, nine tables: `users`, `rooms`, `room_members`, `attachments`, `messages`, `reactions`, `invites`, `nickname_log`, `meta`. Message sequence numbers come from a per room counter, so pagination uses `before_seq` and stays stable while people type.
+SQLite in WAL mode, ten tables: `users`, `rooms`, `room_members`, `attachments`, `messages`, `reactions`, `invites`, `custom_emoji`, `nickname_log`, `meta`. Message sequence numbers come from a per room counter, so pagination uses `before_seq` and stays stable while people type.
 
 Uploads go to `uploads/` with a random name. The database keeps the original filename, MIME type, byte count, and digest.
 
@@ -267,7 +267,7 @@ For the window, run `.venv/bin/python desktop.py`, or `hosttalk app`. The macOS 
 - **Closing.** The window asks before it stops the room. The data folder is untouched.
 - **No Tk.** On a machine without Tk, the app runs as a server and opens the browser.
 
-Builds run in `.github/workflows/build.yml` on a tag. Each build produces an app and a server binary. The icon comes from `icon.ico` on Windows, `HostTalk.icns` on macOS, and `static/icons/icon-512.png` on Linux.
+Builds run in `.github/workflows/build.yml` on a tag. Each build produces an app and a server binary. The Windows exe takes `icon.ico` and the macOS app takes an `icns` made from the 512 px mark. The control window loads `static/icons/icon-192.png` on every platform.
 
 ### Container
 
@@ -282,7 +282,7 @@ The compose file sets `network_mode: host`, because multicast does not cross the
 
 First run has no password. Two paths, same result.
 
-**Browser.** Open `http://127.0.0.1:7284/console` on the host. The first screen asks for a room name, a host name, a host password, a join password, a port, and whether to look for LocalSend devices. Save. The console opens.
+**Browser.** Open `http://127.0.0.1:7284/console` on the host. The first screen asks for a room name, a host name, a host password, a join password, a port, the reach, and whether to look for LocalSend devices. Save. The console opens.
 
 **Terminal.** One command, no prompts:
 
@@ -375,6 +375,9 @@ All routes answer JSON with an `ok` field. Cookies carry the session. Every path
 | GET | `/api/status` | Public settings for the join page |
 | POST | `/api/setup` | First run, host machine only |
 | POST | `/api/session` | Join with a name and password |
+| DELETE | `/api/session` | Leave this device |
+| GET | `/api/people` | Everyone, with the online flag |
+| GET | `/api/invite` | The address for an invite |
 | GET | `/api/me` | Current person, rooms, palette |
 | PATCH | `/api/me` | Rename, change color, set a badge |
 | POST | `/api/me/avatar` | Upload a profile picture |
@@ -383,10 +386,13 @@ All routes answer JSON with an `ok` field. Cookies carry the session. Every path
 | GET | `/api/emoji` | Custom emoji |
 | POST | `/api/emoji` | Add custom emoji, host only |
 | DELETE | `/api/emoji/<id>` | Remove custom emoji, host only |
+| GET | `/api/emoji/<id>/image` | The custom emoji picture |
 | POST | `/api/people/<id>/role` | Change a role, host only |
 | POST | `/api/messages/<id>/pin` | Pin or unpin a message |
 | GET | `/api/rooms/<id>/pinned` | Pinned messages |
 | POST | `/api/rooms/<id>/enter` | Enter a nested room |
+| POST | `/api/rooms/<id>/password` | Set or clear a room password |
+| GET | `/api/rooms/<id>/members` | People in a room |
 | POST | `/api/host/credentials` | Host name and host password, host machine only |
 | GET | `/api/events` | Server-sent event stream |
 | GET | `/api/rooms` | Rooms for the signed in person |
@@ -401,6 +407,7 @@ All routes answer JSON with an `ok` field. Cookies carry the session. Every path
 | PATCH | `/api/messages/<id>` | Edit your message |
 | DELETE | `/api/messages/<id>` | Delete your message |
 | POST | `/api/messages/<id>/reactions` | Toggle a reaction |
+| POST | `/api/typing` | Typing ping |
 | POST | `/api/uploads` | Upload a file |
 | GET | `/api/files/<id>` | Download a file |
 | GET | `/api/previews` | Link preview, guarded |
@@ -410,15 +417,28 @@ All routes answer JSON with an `ok` field. Cookies carry the session. Every path
 | GET | `/api/host/summary` | Checks, rooms, people, stats |
 | PATCH | `/api/host/settings` | Save settings |
 | POST | `/api/host/password` | Change the room password |
+| DELETE | `/api/host/session` | Console sign out |
 | GET | `/api/host/logs` | Filtered log records |
+| GET | `/api/host/logs/download` | The log file as NDJSON |
+| GET | `/api/host/people` | People, roles, and name changes |
+| POST | `/api/host/users/<id>/role` | Move a role, host included |
+| GET | `/api/host/diagnostics` | The check list again |
+| POST | `/api/host/localsend/scan` | Scan for LocalSend devices |
+| GET | `/api/host/theme-preview` | Theme colours |
+| POST | `/api/host/theme` | Set the default theme |
 | GET | `/api/host/export` | Room export as JSON |
 | POST | `/api/host/rooms/<id>/clear` | Delete room messages |
 | POST | `/api/host/users/<id>/disconnect` | End a session |
 | POST | `/api/host/shutdown` | Stop the server, host machine only |
+| GET | `/api/localsend/status` | LocalSend state |
+| GET | `/api/localsend/devices` | Devices seen |
+| POST | `/api/localsend/scan` | Scan the network |
+| POST | `/api/localsend/send` | Send a file out |
 | GET | `/api/localsend/v2/info` | LocalSend identity |
 | POST | `/api/localsend/v2/register` | LocalSend discovery |
 | POST | `/api/localsend/v2/prepare-upload` | LocalSend handshake |
 | POST | `/api/localsend/v2/upload` | LocalSend file body |
+| POST | `/api/localsend/v2/cancel` | LocalSend cancel |
 
 Host routes need the console session cookie and, by default, a loopback address.
 
@@ -445,7 +465,7 @@ What this build does:
 
 - bcrypt for the room password and for locked direct threads, cost 12
 - signed session cookie, HttpOnly, SameSite Lax, 30 days
-- host console behind the same password plus a loopback check
+- host console behind a host name and host password, plus a loopback check
 - rate limits on join attempts, messages, uploads, and typing pings
 - content security policy with `script-src 'self'` and no inline handlers
 - `nosniff`, `SAMEORIGIN`, `no-referrer`, and a permissions policy on every response

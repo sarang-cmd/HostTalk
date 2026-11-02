@@ -36,15 +36,15 @@ py -m venv .venv
 
 The project uses the virtualenv on purpose. A system Python on recent distributions refuses package installs.
 
-## 3. Set the room password
+## 3. Set the host sign in and the room password
 
-Browser path, which also sets the room name and the port:
+Browser path, which also sets the room name, the host sign in, and the port:
 
 ```bash
 .venv/bin/python server.py
 ```
 
-Open `http://127.0.0.1:7284/console`. The first run shows a setup card. Fill in four fields and press Finish setup.
+Open `http://127.0.0.1:7284/console`. The first run shows a setup card with the room name, a host name, a host password, a join password, a port, the reach, and the LocalSend choice. Press Finish setup.
 
 Terminal path, when the machine has no desktop:
 
@@ -56,7 +56,9 @@ Terminal path, when the machine has no desktop:
   --non-interactive
 ```
 
-Both paths write `config.json` into the data folder with mode 0600. The password is stored as a bcrypt hash.
+The terminal path seeds the host password from the join password, with the host name `host`. Change both in the console on the host.
+
+Both paths write `config.json` into the data folder with mode 0600. The host password and the join password are stored as bcrypt hashes. The host name and host password open the console on this machine. The join password is the one guests type.
 
 ## 4. Start the server
 
@@ -95,9 +97,16 @@ Each line answers one question:
 [OK  ] Free space: 42.0 GB free
 [OK  ] Server port: Listening on 7284
 [OK  ] Network address: 192.168.1.24 (1 interface)
-[WARN] GIF search: Add a GIPHY key to enable search
+[WARN] Wi-Fi name: Not detected. Guests still join by address.
+[OK  ] Link previews: On
+[WARN] GIF search: Add a KLIPY key to enable search
+         fix: Get a key at partner.klipy.com
 [OK  ] LocalSend: 0 device(s) seen
+[OK  ] Host console access: This machine only
+[OK  ] Server clock: 2026-01-01 09:00:00 UTC
 ```
+
+A warning prints a `fix:` line under it when the check knows the next step.
 
 Warnings are fine. Failures need action before you invite people.
 
@@ -165,12 +174,14 @@ LocalSend also uses UDP 53317. Open the port when phone transfers matter.
 
 ## 9. Change settings later
 
-The console covers every setting. Open `http://127.0.0.1:7284/console` on the host, sign in with the room password, then:
+The console covers every setting. Open `http://127.0.0.1:7284/console` on the host, sign in with the host name and host password, then:
 
-- **Server settings** edits the port, the reach, the files limit, the room cap, the theme default, the log level, the GIPHY key, and the LocalSend identity.
-- **Room password** changes the password. Guests keep their sessions until they leave.
+- **Server settings** edits the port, the reach, the files limit, the room cap, the theme default, the log level, the KLIPY key, and the LocalSend identity.
+- **Room controls** locks the room, sets read only, sets slow mode, and posts a notice above the thread.
+- **Join password** changes the password guests type. Their sessions keep running until they leave.
+- **Host sign in** changes the host name and the host password. Both work on this machine only.
 - **Rooms** clears messages in a room.
-- **People** ends a session.
+- **People** moves a role, or ends a session.
 - **Logs** filters by level and downloads the file.
 - **Data** exports a room as JSON and stops the server.
 

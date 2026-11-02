@@ -57,6 +57,13 @@ def test_redaction_hides_secrets(data_dir: Path):
     assert "secret_key" not in json.dumps(shown) or shown["secret_key"] == "set"
 
 
+def test_the_old_gif_variable_still_reads(data_dir: Path, monkeypatch):
+    """A .env written before 2.2 keeps its GIF key."""
+    monkeypatch.setenv("GIPHY_API_KEY", "old-key")
+    config = Config.load(data_dir)
+    assert config.klipy_key == "old-key"
+
+
 def test_setup_flag_tracks_password(data_dir: Path):
     config = Config.load(data_dir)
     assert not config.setup_complete

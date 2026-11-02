@@ -1,5 +1,8 @@
 # HostTalk Implementation Plan
 
+> Superseded. This is the original plan, kept for context. `README.md` and `CHANGELOG.md`
+> describe the build as it ships. Where this file and the code disagree, the code wins.
+
 ## Project Overview
 HostTalk is a self-hosted, local-network messaging system built with Python (Flask + Socket.IO) and vanilla JavaScript frontend.
 

@@ -1136,10 +1136,10 @@ function openGifDialog() {
   errorNode.dataset.visible = "false";
   byId("gif-grid").innerHTML = "";
   if (!state.gifReady) {
-    byId("gif-sub").textContent = "GIF search is off. The host adds a GIPHY key in the host console.";
+    byId("gif-sub").textContent = "GIF search is off. The host adds a KLIPY key in the host console.";
     byId("gif-search-btn").disabled = true;
   } else {
-    byId("gif-sub").textContent = "Search GIPHY. Results come through this server.";
+    byId("gif-sub").textContent = "Search KLIPY. Results come through this server.";
     byId("gif-search-btn").disabled = false;
   }
   openDialog("gif-dialog");

@@ -15,7 +15,7 @@ import webbrowser
 from pathlib import Path
 
 from .app import create_app
-from .config import Config
+from .config import Config, project_root
 from .netinfo import lan_ip, wifi_name
 from .services import build_services
 from .version import CODENAME, __version__
@@ -149,6 +149,23 @@ def _browser_command(url: str) -> list[str] | None:
     return None
 
 
+def _set_window_icon(root) -> None:
+    """Put the room mark on the taskbar, the dock, and the title bar."""
+    path = project_root() / "static" / "icons" / "icon-192.png"
+    if not path.exists():
+        return
+    try:
+        import tkinter as tk
+
+        image = tk.PhotoImage(file=str(path))
+    except Exception:
+        return
+    with contextlib.suppress(Exception):
+        root.iconphoto(True, image)
+        # Tk drops an image without a live reference.
+        root.icon_image = image
+
+
 def open_room(url: str) -> None:
     command = _browser_command(url)
     if command:
@@ -172,6 +189,7 @@ def _controller(runner: Runner) -> int:
     root.geometry("460x330")
     root.resizable(False, False)
     root.configure(bg="#f1f0eb")
+    _set_window_icon(root)
 
     families = {name.lower(): name for name in tkfont.families(root)}
 
