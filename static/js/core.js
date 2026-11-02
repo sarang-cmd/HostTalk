@@ -213,7 +213,8 @@ export function badgeHtml(person) {
   // The server keeps an icon with empty text, so the pill shows the icon alone.
   if (!icon) return "";
   const label = text ? escapeHtml(text) : "";
-  return `<span class="badge" title="Badge"><svg class="icon icon--xs" aria-hidden="true"><use href="#i-${escapeHtml(icon)}"></use></svg>${label}</span>`;
+  const modifier = label ? "" : " badge--icon";
+  return `<span class="badge${modifier}" title="Badge"><svg class="icon icon--xs" aria-hidden="true"><use href="#i-${escapeHtml(icon)}"></use></svg>${label}</span>`;
 }
 
 export function roleLabel(role) {

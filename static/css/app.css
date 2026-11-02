@@ -811,6 +811,10 @@ body.app {
   vertical-align: 1px;
 }
 
+.badge--icon {
+  padding: 0 3px;
+}
+
 .badge .icon {
   width: 11px;
   height: 11px;
