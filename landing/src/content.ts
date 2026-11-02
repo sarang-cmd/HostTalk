@@ -1,5 +1,8 @@
 /** Copy for the page. Components stay free of long text. */
 
+// One version string for the whole project. Vite fills it from the server package.
+export const version = __HOSTTALK_VERSION__;
+
 export const repo = "https://github.com/sarang-cmd/HostTalk";
 export const releases = `${repo}/releases/latest`;
 export const issues = `${repo}/issues`;
@@ -20,10 +23,10 @@ export const facts: Fact[] = [
 
 /** The screenshots hold placeholder names, so the page says so. */
 export const demoNote =
-  "Screenshots come from a demo room on the 2.0 build. The names and messages are placeholders.";
+  `Screenshots come from a demo room on the ${version} build. The names and messages are placeholders.`;
 
 export const heroCaption =
-  "The room at laptop width. Rooms, quotes, reactions, an image attachment, and who is here. Captured on the 2.0 build.";
+  `The room at laptop width. Rooms inside rooms, badges, quotes, reactions, an image attachment, and who is here. Captured on the ${version} build.`;
 
 export type Feature = { title: string; body: string };
 
