@@ -1,4 +1,5 @@
 import { Analytics } from "@vercel/analytics/react";
+import { SpeedInsights } from "@vercel/speed-insights/react";
 import { BuildSection } from "./components/BuildSection";
 import { Features } from "./components/Features";
 import { Hero } from "./components/Hero";
@@ -73,6 +74,7 @@ export function App() {
 
       <SiteFooter />
       <Analytics />
+      <SpeedInsights />
     </div>
   );
 }
